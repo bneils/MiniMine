@@ -1,0 +1,34 @@
+
+palettes:
+  - name: mypalette
+    fixed-entries:
+      # Pink is the color I'm sacrificing to represent transparency
+      - color: {index: 0, r: 246, g: 135, b: 207}
+      - color: {index: 1, r: 0, g: 0, b: 255} # 1
+      - color: {index: 2, r: 0, g: 180, b: 0} # 2
+      - color: {index: 3, r: 255, g: 0, b: 0} # 3
+      - color: {index: 4, r: 0, g: 0, b: 120} # 4
+      - color: {index: 5, r: 110, g: 0, b: 0} # 5
+      - color: {index: 6, r: 0, g: 90, b: 110} # 6
+      - color: {index: 7, r: 100, g: 100, b: 100} # 7
+      - color: {index: 8, r: 0, g: 0, b: 0} # 8
+      
+      - color: {index: 9, r: 140, g: 140, b: 140} # bottomright of tile (DARK GRAY)
+      - color: {index: 10, r: 255, g: 255, b: 255} # topleft of tile (WHITE)
+      - color: {index: 11, r: 200, g: 200, b: 200} # middle of tile (LIGHT GRAY) 
+    images: automatic
+
+converts:
+  - name: myimages
+    palette: mypalette
+    images:
+      - mine_sprite.png
+      - flag_sprite.png
+
+outputs:
+  - type: c
+    include-file: gfx.h
+    palettes:
+      - mypalette
+    converts:
+      - myimages
