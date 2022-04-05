@@ -35,7 +35,7 @@ enum Colors {
 };
 
 void set_palette();
-void draw_menu(const char *, const uint8_t w, const uint8_t h, const uint8_t m);
+void draw_menu(const char *);
 void draw_board(struct Cell *, bool reveal);
 
 #ifdef __cplusplus

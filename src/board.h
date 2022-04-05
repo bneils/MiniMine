@@ -7,10 +7,12 @@ extern "C" {
 
 #include <stdint.h>
 
-extern int24_t width, height, mines, xoffset, yoffset;
+extern int24_t width, height, mines, xoffset, yoffset, xcur, ycur;
 
-//__attribute__((__packed__))
-struct Cell {
+struct __attribute__((__packed__)) Cell {
+	// An ad hoc bit I'm using to save on memory
+	unsigned char floodfilled: 1;
+	
 	unsigned char flag: 1;
 	unsigned char open: 1;
 	unsigned char mine: 1;
