@@ -24,6 +24,15 @@ converts:
     images:
       - mine_sprite.png
       - flag_sprite.png
+      - _1.png
+      - _2.png
+      - _3.png
+      - _4.png
+      - _5.png
+      - _6.png
+      - _7.png
+      - _8.png
+      - hidden.png
 
 outputs:
   - type: c

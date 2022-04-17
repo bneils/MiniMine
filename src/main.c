@@ -151,6 +151,7 @@ void gameloop(void) {
 					break;
 				// Movement controls
 				case sk_Left:
+					// A trick with the remainder operator to avoid branching
 					xcur = (xcur + width - 1) % width;
 					break;
 				case sk_Right:

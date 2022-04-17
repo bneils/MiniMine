@@ -12,9 +12,6 @@
 #define MENU_MID_PADDING (LCD_WIDTH / 2)
 #define CHAR_HEIGHT 8
 
-static void draw_digit(int digit, int x, int y);
-static void draw_unopened_tile(int x, int y);
-
 void set_palette() {
 	gfx_SetTransparentColor(TRANSPARENT);
 	gfx_SetTextTransparentColor(0);
@@ -152,7 +149,7 @@ void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, b
 						pixel_y + (CELL_WIDTH - mine_sprite_height) / 2
 					);
 				} else {
-					draw_unopened_tile(pixel_x, pixel_y);
+					gfx_TransparentSprite(hidden, pixel_x, pixel_y);
 					if (cell.flag) {
 						gfx_TransparentSprite(flag_sprite,
 							pixel_x + (CELL_WIDTH - flag_sprite_width) / 2,
@@ -161,7 +158,19 @@ void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, b
 					}
 				}
 			} else {
-				draw_digit(cell.surrounding, pixel_x, pixel_y);
+				gfx_SetColor(LIGHT_GRAY);
+				gfx_FillRectangle(pixel_x + 1, pixel_y + 1, CELL_WIDTH - 2, CELL_WIDTH - 2);
+				gfx_SetColor(DARK_GRAY);
+				gfx_Rectangle(pixel_x, pixel_y, CELL_WIDTH, CELL_WIDTH);
+				
+				uint8_t num = cell.surrounding - 1;
+				if (num >= 0) {
+					const gfx_sprite_t *sprites[] = { _1, _2, _3, _4, _5, _6, _7, _8 };
+					gfx_TransparentSprite(sprites[num],
+						pixel_x + (CELL_WIDTH - DIGIT_SPRITE_WIDTH) / 2,
+						pixel_y + (CELL_WIDTH - DIGIT_SPRITE_HEIGHT) / 2
+					);
+				}
 			}
 		}
 	}
@@ -174,71 +183,4 @@ void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, b
 		CELL_WIDTH, CELL_WIDTH
 	);
 
-}
-
-static void draw_unopened_tile(int x, int y) {
-	// All you need to know is that the border is 2 px thick, the inside
-	// is a square, and that the topright and bottomleft corners are a
-	// gradient. Don't try to understand this.
-	
-	// We're avoiding drawing the two pixels in the topright and bottomleft
-	// by making this a pixel thicker.
-	gfx_SetColor(LIGHT_GRAY);
-	gfx_FillRectangle(x, y, CELL_WIDTH, CELL_WIDTH);
-	
-	gfx_SetColor(WHITE);
-	gfx_FillRectangle(x, y, CELL_WIDTH - 2, 2);
-	gfx_FillRectangle(x, y + 2, 2, CELL_WIDTH - 4);
-	gfx_SetPixel(x, y + CELL_WIDTH - 2);
-	gfx_SetPixel(x + CELL_WIDTH - 2, y);
-	
-	gfx_SetColor(DARK_GRAY);
-	gfx_SetPixel(x + 1, y + CELL_WIDTH - 1);
-	gfx_SetPixel(x + CELL_WIDTH - 1, y + 1);
-	gfx_FillRectangle(x + 2, y + CELL_WIDTH - 2, CELL_WIDTH - 2, 2);
-	gfx_FillRectangle(x + CELL_WIDTH - 2, y + 2, 2, CELL_WIDTH - 4);
-}
-
-static void draw_digit(int digit, int x, int y) {
-	static const uint8_t digit_sprites[8][DIGIT_SPRITE_HEIGHT] = {
-		{0x38, 0x78, 0xF8, 0xD8, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0xFF, 0xFF},
-		{0x7E, 0xFF, 0xC7, 0x83, 0x07, 0x0F, 0x1E, 0x38, 0x70, 0x60, 0xE0, 0xC0, 0xFF, 0xFF},
-		{0x7C, 0xFE, 0xC7, 0x03, 0x03, 0x07, 0x3E, 0x3E, 0x07, 0x03, 0x03, 0xC7, 0xFE, 0x7C},
-		{0x33, 0x73, 0x63, 0x63, 0xC3, 0xFF, 0x7F, 0x07, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03},
-		{0xFF, 0xFF, 0xC0, 0xC0, 0xC0, 0xFC, 0xFE, 0x07, 0x03, 0x03, 0x03, 0x07, 0xFE, 0xFC},
-		{0x1F, 0x3F, 0x70, 0x60, 0xC0, 0xC0, 0xFC, 0xFE, 0xE7, 0xC3, 0xC3, 0xE7, 0xFF, 0x7E},
-		{0xFF, 0xFF, 0x03, 0x03, 0x07, 0x06, 0x0E, 0x1C, 0x38, 0x30, 0x70, 0x60, 0xE0, 0xC0},
-		{0x7E, 0xFF, 0xE7, 0xC3, 0xE7, 0xFF, 0x7E, 0xFF, 0xE7, 0xC3, 0xC3, 0xE7, 0xFF, 0x7E}
-	};
-	
-	gfx_SetColor(DARK_GRAY);
-	gfx_Rectangle(x, y, CELL_WIDTH, CELL_WIDTH);
-	gfx_SetColor(LIGHT_GRAY);
-	gfx_FillRectangle(x + 1, y + 1, CELL_WIDTH - 2, CELL_WIDTH - 2);
-			
-	if (1 <= digit && digit <= 8) {
-		// I manually iterate over each byte, and draw any ON bits.
-		// This is a major storage benefit, as instead of using
-		// 8(14)(8)=896 bytes, I only need 112.
-		// I would opt to use sprites instead if this was required to be
-		// done more often.
-		
-		x += (CELL_WIDTH - DIGIT_SPRITE_WIDTH) / 2;
-		y += (CELL_WIDTH - DIGIT_SPRITE_HEIGHT) / 2;
-		
-		const uint8_t *row = digit_sprites[digit - 1];
-		gfx_SetColor(DIGIT_TO_COLOR(digit));
-		for (int i = 0; i < DIGIT_SPRITE_HEIGHT; ++i) {
-			int temp_x = x;
-			int cols = *row;
-			while (cols) {
-				if (cols & (1 << 7))
-					gfx_SetPixel(temp_x, y + i);
-				++temp_x;
-				cols <<= 1;
-			}
-			
-			++row;
-		}
-	}
 }
