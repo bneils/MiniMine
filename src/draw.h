@@ -6,8 +6,8 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include "board.h"
 #include <stdbool.h>
+#include "board.h"
 
 #define CELL_WIDTH 20
 

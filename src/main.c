@@ -17,10 +17,9 @@
 // [x] First click is always zero
 // [x] Have screen follow cursor if it goes off screen
 // [ ] Save / resume a game?
-// [ ] Remember last difficulty used
+// [x] Remember last difficulty used
 // [ ] Increment in larger amounts when moving cursor for X amount of times in a row OR when the screen has to shift
-// [ ] Cursor wrapping
-// [ ] Add an arrow when the cursor is near the edge of the screen that indicates the screen doesn't end there
+// [x] Add an arrow when the cursor is near the edge of the screen that indicates the screen doesn't end there
 //     ^ Or, change the side of the cursor to be a different color. (It's a square)
 
 // I don't want to pass a million parameters to each function.
@@ -108,31 +107,29 @@ void gameloop(void) {
 		
 		while (running) {
 			// Sometimes the cursor goes offscreen, so if that happens the offset is changed.
-			// This is also some mathematical wizardry. Sorry.
 			int pixel;
 			int unmodified_offsets = 0;
 			
 			pixel = X_PIXEL(xcur);
-			if (pixel >= LCD_WIDTH) xoffset += (LCD_WIDTH - CELL_WIDTH) - pixel;
-			else if (pixel < 0) xoffset += -pixel;
+			if (pixel >= LCD_WIDTH) xoffset -= CELL_WIDTH;
+			else if (pixel < 0) xoffset += CELL_WIDTH;
 			else ++unmodified_offsets;
 			
 			pixel = Y_PIXEL(ycur);
-			if (pixel >= LCD_HEIGHT) yoffset += (LCD_HEIGHT - CELL_WIDTH) - pixel;
-			else if (pixel < 0) yoffset += -pixel;
+			if (pixel >= LCD_HEIGHT) yoffset -= CELL_WIDTH;
+			else if (pixel < 0) yoffset += CELL_WIDTH;
 			else ++unmodified_offsets;
 			
 			draw_board(cells, died, clicked_x, clicked_y, unmodified_offsets == 2 && !force_redraw);
 			force_redraw = false;
 			gfx_SwapDraw();
 			
-			struct Cell *cell = &cells[ycur * width + xcur];
-		
+			struct Cell *cell = &cells[cursor_pos()];
+			bool movement_key;
 			uint8_t key;
+wait_poll_key:
 			while (!(key = os_GetCSC()))
 				;
-			
-			bool movement_key;
 			
 			switch (key) {
 				case sk_Left:
@@ -141,6 +138,9 @@ void gameloop(void) {
 				case sk_Up:
 					movement_key = true;
 					cell->changed = true;
+					break;
+				default:
+					movement_key = false;
 					break;
 			}
 			
@@ -151,17 +151,16 @@ void gameloop(void) {
 					break;
 				// Movement controls
 				case sk_Left:
-					// A trick with the remainder operator to avoid branching
-					xcur = (xcur + width - 1) % width;
+					if (xcur > 0) --xcur;
 					break;
 				case sk_Right:
-					xcur = (xcur + 1) % width;
+					if (xcur < width - 1) ++xcur;
 					break;
 				case sk_Up:
-					ycur = (ycur + height - 1) % height;
+					if (ycur > 0) --ycur;
 					break;
 				case sk_Down:
-					ycur = (ycur + 1) % height;
+					if (ycur < height - 1) ++ycur;
 					break;
 				case sk_2nd:
 					if (!can_interact) {
@@ -193,6 +192,7 @@ void gameloop(void) {
 					
 					if (num_unknown == mines) {
 						can_interact = false;
+						force_redraw = true;
 						// All mines should be made flags when the game is won
 						for (struct Cell *right = &cells[size - 1]; right >= cells; --right) {
 							if (!right->open) {
@@ -214,10 +214,12 @@ void gameloop(void) {
 						cell->flag = !cell->flag;
 					}
 					break;
+				default:
+					goto wait_poll_key;
 			}
 			
 			if (movement_key) {
-				cells[ycur * width + xcur].changed = true;
+				cells[cursor_pos()].changed = true;
 			}
 		}
 	}
@@ -230,4 +232,5 @@ int main(void) {
 	srandom(clock()); // hopefully better than rtc_Time(), b/c of ram resets
 	gameloop();
 	gfx_End();
+	return 0;
 }

@@ -1,5 +1,5 @@
 #include "draw.h"
-#include "gfx.h"
+#include "sprites/gfx.h"
 #include "board.h"
 #include <graphx.h>
 #include <stdint.h>
@@ -115,7 +115,7 @@ void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, b
 	int xmax = xmin + LCD_WIDTH / CELL_WIDTH;
 	if (xmin < 0) xmin = 0;
 	if (xmax > width) xmax = width;
-
+	
 	if (partial_redraw) {
 		gfx_BlitScreen();
 	} else if (width < LCD_WIDTH / CELL_WIDTH || height < LCD_HEIGHT / CELL_WIDTH) {
@@ -174,7 +174,7 @@ void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, b
 			}
 		}
 	}
-	
+
 	// Box outline overlay (cursor)
 	gfx_SetColor(BLACK);
 	gfx_Rectangle(
@@ -182,5 +182,11 @@ void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, b
 		Y_PIXEL(ycur), 
 		CELL_WIDTH, CELL_WIDTH
 	);
-
+	
+	// Draw a border if it goes no further
+	gfx_SetColor(RED);	
+	if (ymin == 0 && 0 <= yoffset && yoffset <= 2) gfx_FillRectangle(0, 0, LCD_WIDTH, 2);
+	if (ymax == height && yoffset <= 0) gfx_FillRectangle(0, LCD_HEIGHT - 2, LCD_WIDTH, 2);
+	if (xmin == 0 && 0 <= xoffset && xoffset <= 2) gfx_FillRectangle(0, 0, 2, LCD_HEIGHT);
+	if (xmax == width && xoffset <= 0) gfx_FillRectangle(LCD_WIDTH - 2, 0, 2, LCD_HEIGHT);
 }

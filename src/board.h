@@ -25,6 +25,7 @@ struct __attribute__((__packed__)) Cell {
 	unsigned char surrounding: 4;	// Only mutated during board setup
 };
 
+int cursor_pos(void);
 bool check_bounds(int x, int y);
 void cells_place_mines(struct Cell *);
 bool cells_click(struct Cell *cells, int x, int y);

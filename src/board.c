@@ -4,6 +4,10 @@
 
 #include "board.h"
 
+int cursor_pos(void) {
+	return ycur * width + xcur;
+}
+
 /* commonly used in loops to check if surrounding positions are valid */
 bool check_bounds(int x, int y) {
 	return x >= 0 && y >= 0 && x < width && y < height;
