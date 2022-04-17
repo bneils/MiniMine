@@ -12,8 +12,8 @@
 #define MENU_MID_PADDING (LCD_WIDTH / 2)
 #define CHAR_HEIGHT 8
 
-static void draw_digit(int24_t digit, int24_t x, int24_t y);
-static void draw_unopened_tile(int24_t x, int24_t y);
+static void draw_digit(int digit, int x, int y);
+static void draw_unopened_tile(int x, int y);
 
 void set_palette() {
 	gfx_SetTransparentColor(TRANSPARENT);
@@ -21,22 +21,30 @@ void set_palette() {
 	gfx_SetPalette(mypalette, sizeof(mypalette), 0);
 }
 
-void draw_menu(const char *difficulty) {
+void draw_text_label(char *s, int x, int y) {
+	int w = gfx_GetStringWidth(s);
+	x -= w / 2;
+	gfx_SetTextBGColor(LIGHT_GRAY);
+	gfx_SetTextFGColor(WHITE);
+	gfx_PrintStringXY(s, x, y);
+	gfx_SetColor(BLACK);
+	gfx_Rectangle(x, y, w, CHAR_HEIGHT); 
+}
+
+void draw_menu(const char *difficulty) {	
 	const char *title = "MiniMines by Ben Neilsen";
 	const char *tip = "2nd to continue";
 	char buf[4];
 	
-	gfx_SetTextConfig(gfx_text_clip);
-	
 	gfx_FillScreen(BLACK);
 	gfx_SetTextFGColor(BLUE);
-	gfx_SetTextBGColor(TRANSPARENT);
+	gfx_SetTextBGColor(TRANSPARENT);	
 	gfx_PrintStringXY(
 		title,
 		(LCD_WIDTH - gfx_GetStringWidth(title)) / 2,
 		MENU_TOP_PADDING
 	);
-	
+
 	gfx_SetTextFGColor(WHITE);
 	
 	gfx_PrintStringXY(
@@ -94,71 +102,81 @@ void draw_menu(const char *difficulty) {
 	);
 }
 
-void draw_board(struct Cell *cells, bool reveal) {
-	gfx_FillScreen(BLACK);
-	
+void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, bool partial_redraw) {
 	// This is used to optimize the drawing routines.
 	// Plus, it reduces some drawing artifacts caused by out-of-buffer
 	// graphic calls
 	// It took me a while to get the math together on paper, so I would
 	// just trust that this works, but you can try to understand it if you
 	// want.
-	int24_t ymin = -yoffset / CELL_WIDTH;
-	int24_t ymax = ymin + LCD_HEIGHT / CELL_WIDTH;
+	int ymin = -yoffset / CELL_WIDTH;
+	int ymax = ymin + LCD_HEIGHT / CELL_WIDTH;
 	if (ymin < 0) ymin = 0;
 	if (ymax > height) ymax = height;
 	
-	int24_t xmin = -xoffset / CELL_WIDTH;
-	int24_t xmax = xmin + LCD_WIDTH / CELL_WIDTH;
+	int xmin = -xoffset / CELL_WIDTH;
+	int xmax = xmin + LCD_WIDTH / CELL_WIDTH;
 	if (xmin < 0) xmin = 0;
 	if (xmax > width) xmax = width;
 
-
-	for (int24_t y = ymin; y < ymax; ++y)
-		for (int24_t x = xmin; x < xmax; ++x) {
-			struct Cell cell = cells[y * width + x];
+	if (partial_redraw) {
+		gfx_BlitScreen();
+	} else if (width < LCD_WIDTH / CELL_WIDTH || height < LCD_HEIGHT / CELL_WIDTH) {
+		// There's no reason to draw the black background if nothing would show
+		gfx_FillScreen(BLACK);
+	}
+	
+	for (int y = ymin; y < ymax; ++y) {
+		for (int x = xmin; x < xmax; ++x) {
+			struct Cell *cell_ptr = &cells[y * width + x];
+			struct Cell cell = *cell_ptr;
 			
-			int24_t pixel_x = x * CELL_WIDTH + xoffset;
-			int24_t pixel_y = y * CELL_WIDTH + yoffset;
+			if (partial_redraw && !cell.changed) {
+				continue;
+			}
+			
+			cell_ptr->changed = 0;
+			
+			int pixel_x = X_PIXEL(x);
+			int pixel_y = Y_PIXEL(y);
 			
 			if (!cell.open) {
-				if (!(reveal && cell.mine)) {
+				if (reveal && cell.mine) {
+					gfx_SetColor(DARK_GRAY);
+					gfx_Rectangle(pixel_x, pixel_y, CELL_WIDTH, CELL_WIDTH);
+					gfx_SetColor((clicked_x == x && clicked_y == y) ? RED : LIGHT_GRAY);
+					gfx_FillRectangle(pixel_x + 1, pixel_y + 1, CELL_WIDTH - 2, CELL_WIDTH - 2);
+					
+					gfx_TransparentSprite(mine_sprite,
+						pixel_x + (CELL_WIDTH - mine_sprite_width) / 2,
+						pixel_y + (CELL_WIDTH - mine_sprite_height) / 2
+					);
+				} else {
 					draw_unopened_tile(pixel_x, pixel_y);
-					if (cell.flag)
+					if (cell.flag) {
 						gfx_TransparentSprite(flag_sprite,
 							pixel_x + (CELL_WIDTH - flag_sprite_width) / 2,
 							pixel_y + (CELL_WIDTH - flag_sprite_height) / 2
 						);
+					}
 				}
 			} else {
 				draw_digit(cell.surrounding, pixel_x, pixel_y);
 			}
-			
-			if (reveal && cell.mine) {
-				gfx_SetColor(DARK_GRAY);
-				gfx_Rectangle(pixel_x, pixel_y, CELL_WIDTH, CELL_WIDTH);
-				gfx_SetColor((xcur == x && ycur == y) ? RED : LIGHT_GRAY);
-				gfx_FillRectangle(pixel_x + 1, pixel_y + 1, CELL_WIDTH - 2, CELL_WIDTH - 2);
-				
-				gfx_TransparentSprite(mine_sprite, 
-					pixel_x + (CELL_WIDTH - mine_sprite_width) / 2,
-					pixel_y + (CELL_WIDTH - mine_sprite_height) / 2
-				);
-			}
 		}
-	
-	if (!reveal) {
-		// Box outline overlay	
-		gfx_SetColor(BLACK);
-		gfx_Rectangle(
-			xcur * CELL_WIDTH + xoffset - 1, 
-			ycur * CELL_WIDTH + yoffset - 1, 
-			CELL_WIDTH + 2, CELL_WIDTH + 2
-		);
 	}
+	
+	// Box outline overlay (cursor)
+	gfx_SetColor(BLACK);
+	gfx_Rectangle(
+		X_PIXEL(xcur), 
+		Y_PIXEL(ycur), 
+		CELL_WIDTH, CELL_WIDTH
+	);
+
 }
 
-static void draw_unopened_tile(int24_t x, int24_t y) {
+static void draw_unopened_tile(int x, int y) {
 	// All you need to know is that the border is 2 px thick, the inside
 	// is a square, and that the topright and bottomleft corners are a
 	// gradient. Don't try to understand this.
@@ -181,7 +199,7 @@ static void draw_unopened_tile(int24_t x, int24_t y) {
 	gfx_FillRectangle(x + CELL_WIDTH - 2, y + 2, 2, CELL_WIDTH - 4);
 }
 
-static void draw_digit(int24_t digit, int24_t x, int24_t y) {
+static void draw_digit(int digit, int x, int y) {
 	static const uint8_t digit_sprites[8][DIGIT_SPRITE_HEIGHT] = {
 		{0x38, 0x78, 0xF8, 0xD8, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0xFF, 0xFF},
 		{0x7E, 0xFF, 0xC7, 0x83, 0x07, 0x0F, 0x1E, 0x38, 0x70, 0x60, 0xE0, 0xC0, 0xFF, 0xFF},
@@ -210,14 +228,14 @@ static void draw_digit(int24_t digit, int24_t x, int24_t y) {
 		
 		const uint8_t *row = digit_sprites[digit - 1];
 		gfx_SetColor(DIGIT_TO_COLOR(digit));
-		for (int24_t i = 0; i < DIGIT_SPRITE_HEIGHT; ++i) {
-			int24_t temp_x = x;
-			int24_t cols = *row;
+		for (int i = 0; i < DIGIT_SPRITE_HEIGHT; ++i) {
+			int temp_x = x;
+			int cols = *row;
 			while (cols) {
-				cols <<= 1;
 				if (cols & (1 << 7))
 					gfx_SetPixel(temp_x, y + i);
 				++temp_x;
+				cols <<= 1;
 			}
 			
 			++row;
