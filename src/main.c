@@ -6,22 +6,6 @@
 #include "board.h"
 #include "draw.h"
 
-// TODO:
-// [x] More efficient graphics routines by using partial redraw
-// [ ] ^ Make redraws faster, in general
-// [x] Better flood filling (sacrifice memory for speed)
-// [x] Add a better way to quit after failure
-// [x] Win check
-// [ ] Flashing rectangle that announces if you won or not (Dynamically size w/ a border)
-// [ ] Pause screen that shows mine count, time elapsed, 
-// [x] First click is always zero
-// [x] Have screen follow cursor if it goes off screen
-// [ ] Save / resume a game?
-// [x] Remember last difficulty used
-// [ ] Increment in larger amounts when moving cursor for X amount of times in a row OR when the screen has to shift
-// [x] Add an arrow when the cursor is near the edge of the screen that indicates the screen doesn't end there
-//     ^ Or, change the side of the cursor to be a different color. (It's a square)
-
 // I don't want to pass a million parameters to each function.
 // This also lets me avoid having some config struct that I have to
 // constantly dereference. Also, I hate having to change function prototypes.
@@ -81,6 +65,13 @@ int menu_screen(void) {
 		while (!(key = os_GetCSC()))
 			;
 	}
+}
+
+void pause_screen(void) {
+	
+	
+	while (!(os_GetCSC()))
+		;
 }
 
 /* 0 on continue, 1 on exit */
@@ -213,6 +204,8 @@ wait_poll_key:
 						cell->changed = true;
 						cell->flag = !cell->flag;
 					}
+					break;
+				case sk_Mode:
 					break;
 				default:
 					goto wait_poll_key;
