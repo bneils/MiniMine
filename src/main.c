@@ -67,13 +67,6 @@ int menu_screen(void) {
 	}
 }
 
-void pause_screen(void) {
-	
-	
-	while (!(os_GetCSC()))
-		;
-}
-
 /* 0 on continue, 1 on exit */
 void gameloop(void) {
 	struct Cell cells[MAX_CELLS * sizeof(struct Cell)];
@@ -161,6 +154,8 @@ wait_poll_key:
 
 					// I want to make sure the first click is a "good" one
 					if (!board_generated) {
+						// This should prevent the user from getting the same thing EVEN after ram resets.
+						srandom(clock());
 						cells_place_mines(cells);
 						board_generated = true;
 					}
@@ -170,8 +165,19 @@ wait_poll_key:
 					
 					if (cells_click(cells, xcur, ycur)) {
 						died = true;
-						force_redraw = true;
 						can_interact = false;
+						force_redraw = true;
+						draw_board(cells, died, clicked_x, clicked_y, !force_redraw);
+						// Tell the player they have no skill
+						// You need to force a redraw here because it won't happen until
+						// after the pause screen is shown
+						draw_pause_screen();
+						draw_centered_text("You lost!", LCD_HEIGHT / 2, BLACK);
+						draw_centered_text("Get gud. ;(", LCD_HEIGHT / 2 + CHAR_HEIGHT, BLACK);
+						gfx_SwapDraw();
+						msleep(500);
+						while (!(os_GetCSC()))
+							;
 					}
 					
 					// Scan the entire board to check if the win condition is met.
@@ -190,6 +196,16 @@ wait_poll_key:
 								right->flag = 1;
 							}
 						}
+						
+						// Tell the player they're adequate
+						draw_board(cells, died, clicked_x, clicked_y, !force_redraw);
+						draw_pause_screen();
+						draw_centered_text("You won!", LCD_HEIGHT / 2, BLACK);
+						draw_centered_text("You're okay, I guess.", LCD_HEIGHT / 2 + CHAR_HEIGHT, BLACK);
+						gfx_SwapDraw();
+						msleep(500);
+						while (!(os_GetCSC()))
+							;
 					}
 					
 					break;
@@ -206,6 +222,25 @@ wait_poll_key:
 					}
 					break;
 				case sk_Mode:
+					// Bring up the pause screen, which can show information
+					gfx_BlitScreen();
+					draw_pause_screen();
+					
+					int nflags = 0;
+					for (int i = 0; i < size; ++i) {
+						if (cells[i].flag) {
+							++nflags;
+						}
+					}
+					
+					draw_pause_screen_key_value("Mines remaining:", (nflags <= mines) ? mines - nflags : 0, PAUSE_LABEL_TEXT_Y);
+					draw_pause_screen_key_value("Total mines:", mines, PAUSE_LABEL_TEXT_Y + PAUSE_LABEL_ROW_SPACING);
+					draw_pause_screen_key_value("Width:", width, PAUSE_LABEL_TEXT_Y + PAUSE_LABEL_ROW_SPACING * 2);
+					draw_pause_screen_key_value("Height:", height, PAUSE_LABEL_TEXT_Y + PAUSE_LABEL_ROW_SPACING * 3);
+					gfx_SwapDraw();
+					while (!(os_GetCSC()))
+						;
+					force_redraw = true;
 					break;
 				default:
 					goto wait_poll_key;
@@ -222,7 +257,6 @@ int main(void) {
 	gfx_Begin();
 	gfx_SetDrawBuffer();
 	set_palette();
-	srandom(clock()); // hopefully better than rtc_Time(), b/c of ram resets
 	gameloop();
 	gfx_End();
 	return 0;

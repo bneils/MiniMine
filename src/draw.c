@@ -7,40 +7,63 @@
 #include <stdio.h>
 #include <tice.h>
 
-#define MENU_TOP_PADDING 40
-#define MENU_LEFT_PADDING 40
-#define MENU_MID_PADDING (LCD_WIDTH / 2)
-#define CHAR_HEIGHT 8
+/* display a centered label in the pause menu */
+void draw_centered_text(char *s, int y, enum Color color) {
+	gfx_SetTextFGColor(color);
+	gfx_SetTextBGColor(TRANSPARENT);
+	gfx_PrintStringXY(s, 
+		(LCD_WIDTH - gfx_GetStringWidth(s)) / 2, y
+	);
+}
 
-void set_palette() {
+/* display a key/value pair in the pause menu */
+void draw_pause_screen_key_value(char *s, uint8_t num, int y) {
+	char byte_buf[4];
+	gfx_SetTextFGColor(BLACK);
+	gfx_SetTextBGColor(TRANSPARENT);
+	sprintf(byte_buf, "%d", num);
+	gfx_PrintStringXY(s, PAUSE_LABEL_TEXT_X, y);
+	gfx_PrintStringXY(byte_buf,
+		PAUSE_LABEL_TEXT_X + CHAR_HEIGHT + gfx_GetStringWidth(s),
+		y
+	);
+}
+
+void draw_pause_screen(void) {
+	gfx_SetColor(WHITE);
+	gfx_Rectangle(
+		PAUSE_LABEL_OUTER_X, PAUSE_LABEL_OUTER_Y,
+		PAUSE_LABEL_WIDTH, PAUSE_LABEL_HEIGHT
+	);
+	gfx_Rectangle(
+		PAUSE_LABEL_OUTER_X + 2, PAUSE_LABEL_OUTER_Y + 2,
+		PAUSE_LABEL_WIDTH - 4, PAUSE_LABEL_HEIGHT - 4
+	);
+	
+	gfx_SetColor(BLACK);
+	gfx_Rectangle(
+		PAUSE_LABEL_OUTER_X + 1, PAUSE_LABEL_OUTER_Y + 1,
+		PAUSE_LABEL_WIDTH - 2, PAUSE_LABEL_HEIGHT - 2
+	);
+	
+	gfx_SetColor(LIGHT_GRAY);
+	gfx_FillRectangle(
+		PAUSE_LABEL_INNER_X, PAUSE_LABEL_INNER_Y, 
+		PAUSE_LABEL_WIDTH - 2 * PAUSE_LABEL_BORDER_WIDTH, PAUSE_LABEL_HEIGHT - 2 * PAUSE_LABEL_BORDER_WIDTH
+	);
+}
+
+void set_palette(void) {
 	gfx_SetTransparentColor(TRANSPARENT);
 	gfx_SetTextTransparentColor(0);
 	gfx_SetPalette(mypalette, sizeof(mypalette), 0);
 }
 
-void draw_text_label(char *s, int x, int y) {
-	int w = gfx_GetStringWidth(s);
-	x -= w / 2;
-	gfx_SetTextBGColor(LIGHT_GRAY);
-	gfx_SetTextFGColor(WHITE);
-	gfx_PrintStringXY(s, x, y);
-	gfx_SetColor(BLACK);
-	gfx_Rectangle(x, y, w, CHAR_HEIGHT); 
-}
-
 void draw_menu(const char *difficulty) {	
-	const char *title = "MiniMines by Ben Neilsen";
-	const char *tip = "2nd to continue";
 	char buf[4];
 	
 	gfx_FillScreen(BLACK);
-	gfx_SetTextFGColor(BLUE);
-	gfx_SetTextBGColor(TRANSPARENT);	
-	gfx_PrintStringXY(
-		title,
-		(LCD_WIDTH - gfx_GetStringWidth(title)) / 2,
-		MENU_TOP_PADDING
-	);
+	draw_centered_text("MiniMines by superhelix", MENU_TOP_PADDING, BLUE);
 
 	gfx_SetTextFGColor(WHITE);
 	
@@ -92,11 +115,9 @@ void draw_menu(const char *difficulty) {
 		MENU_TOP_PADDING + CHAR_HEIGHT * 9
 	);
 	
-	gfx_PrintStringXY(
-		tip,
-		(LCD_WIDTH - gfx_GetStringWidth(tip)) / 2,
-		MENU_TOP_PADDING + CHAR_HEIGHT * 11
-	);
+	draw_centered_text("2nd to interact (labels & unopened)", MENU_TOP_PADDING + CHAR_HEIGHT * 11, WHITE);
+	draw_centered_text("Alpha to flag", MENU_TOP_PADDING + CHAR_HEIGHT * 12, WHITE);
+	draw_centered_text("Arrow keys to move", MENU_TOP_PADDING + CHAR_HEIGHT * 13, WHITE);
 }
 
 void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, bool partial_redraw) {
@@ -163,10 +184,9 @@ void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, b
 				gfx_SetColor(DARK_GRAY);
 				gfx_Rectangle(pixel_x, pixel_y, CELL_WIDTH, CELL_WIDTH);
 				
-				uint8_t num = cell.surrounding - 1;
-				if (num >= 0) {
+				if (cell.surrounding >= 1) {
 					const gfx_sprite_t *sprites[] = { _1, _2, _3, _4, _5, _6, _7, _8 };
-					gfx_TransparentSprite(sprites[num],
+					gfx_TransparentSprite(sprites[cell.surrounding - 1],
 						pixel_x + (CELL_WIDTH - DIGIT_SPRITE_WIDTH) / 2,
 						pixel_y + (CELL_WIDTH - DIGIT_SPRITE_HEIGHT) / 2
 					);

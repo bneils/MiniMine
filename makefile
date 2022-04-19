@@ -1,11 +1,7 @@
-# ----------------------------
-# Makefile Options
-# ----------------------------
-
 NAME = MINIMINE
 DESCRIPTION = "Minesweeper by superhelix"
 ARCHIVED = YES
-COMPRESSED = NO
+COMPRESSED = YES
 HAS_PRINTF = NO
 CFLAGS = -Wall -Wextra -Oz
 CXXFLAGS = -Wall -Wextra -Oz
