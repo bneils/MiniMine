@@ -116,26 +116,29 @@ void draw_menu(const char *difficulty) {
 	);
 	
 	draw_centered_text("2nd to interact (labels & unopened)", MENU_TOP_PADDING + CHAR_HEIGHT * 11, WHITE);
-	draw_centered_text("Alpha to flag", MENU_TOP_PADDING + CHAR_HEIGHT * 12, WHITE);
-	draw_centered_text("Arrow keys to move", MENU_TOP_PADDING + CHAR_HEIGHT * 13, WHITE);
+	draw_centered_text("Arrow keys to move", MENU_TOP_PADDING + CHAR_HEIGHT * 12, WHITE);
+	draw_centered_text("Alpha to flag", MENU_TOP_PADDING + CHAR_HEIGHT * 13, WHITE);
+	draw_centered_text("Mode to pause", MENU_TOP_PADDING + CHAR_HEIGHT * 14, WHITE);
 }
 
-void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, bool partial_redraw) {
+void draw_board(struct Cell *cells, bool reveal, struct Vec2D clicked, bool partial_redraw) {
 	// This is used to optimize the drawing routines.
 	// Plus, it reduces some drawing artifacts caused by out-of-buffer
 	// graphic calls
 	// It took me a while to get the math together on paper, so I would
 	// just trust that this works, but you can try to understand it if you
 	// want.
-	int ymin = -yoffset / CELL_WIDTH;
-	int ymax = ymin + LCD_HEIGHT / CELL_WIDTH;
-	if (ymin < 0) ymin = 0;
-	if (ymax > height) ymax = height;
+	struct Vec2D min, max;
 	
-	int xmin = -xoffset / CELL_WIDTH;
-	int xmax = xmin + LCD_WIDTH / CELL_WIDTH;
-	if (xmin < 0) xmin = 0;
-	if (xmax > width) xmax = width;
+	min.y = -offset.y / CELL_WIDTH;
+	max.y = min.y + LCD_HEIGHT / CELL_WIDTH;
+	if (min.y < 0) min.y = 0;
+	if (max.y > height) max.y = height;
+	
+	min.x = -offset.x / CELL_WIDTH;
+	max.x = min.x + LCD_WIDTH / CELL_WIDTH;
+	if (min.x < 0) min.x = 0;
+	if (max.x > width) max.x = width;
 	
 	if (partial_redraw) {
 		gfx_BlitScreen();
@@ -144,8 +147,8 @@ void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, b
 		gfx_FillScreen(BLACK);
 	}
 	
-	for (int y = ymin; y < ymax; ++y) {
-		for (int x = xmin; x < xmax; ++x) {
+	for (int y = min.y; y < max.y; ++y) {
+		for (int x = min.x; x < max.x; ++x) {
 			struct Cell *cell_ptr = &cells[y * width + x];
 			struct Cell cell = *cell_ptr;
 			
@@ -153,42 +156,44 @@ void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, b
 				continue;
 			}
 			
-			cell_ptr->changed = 0;
+			cell_ptr->changed = false;
 			
-			int pixel_x = X_PIXEL(x);
-			int pixel_y = Y_PIXEL(y);
+			struct Vec2D pixel = {
+				.x = X_PIXEL(x),
+				.y = Y_PIXEL(y)
+			};
 			
 			if (!cell.open) {
 				if (reveal && cell.mine) {
 					gfx_SetColor(DARK_GRAY);
-					gfx_Rectangle(pixel_x, pixel_y, CELL_WIDTH, CELL_WIDTH);
-					gfx_SetColor((clicked_x == x && clicked_y == y) ? RED : LIGHT_GRAY);
-					gfx_FillRectangle(pixel_x + 1, pixel_y + 1, CELL_WIDTH - 2, CELL_WIDTH - 2);
+					gfx_Rectangle(pixel.x, pixel.y, CELL_WIDTH, CELL_WIDTH);
+					gfx_SetColor((clicked.x == x && clicked.y == y) ? RED : LIGHT_GRAY);
+					gfx_FillRectangle(pixel.x + 1, pixel.y + 1, CELL_WIDTH - 2, CELL_WIDTH - 2);
 					
 					gfx_TransparentSprite(mine_sprite,
-						pixel_x + (CELL_WIDTH - mine_sprite_width) / 2,
-						pixel_y + (CELL_WIDTH - mine_sprite_height) / 2
+						pixel.x + (CELL_WIDTH - mine_sprite_width) / 2,
+						pixel.y + (CELL_WIDTH - mine_sprite_height) / 2
 					);
 				} else {
-					gfx_TransparentSprite(hidden, pixel_x, pixel_y);
+					gfx_TransparentSprite(hidden, pixel.x, pixel.y);
 					if (cell.flag) {
 						gfx_TransparentSprite(flag_sprite,
-							pixel_x + (CELL_WIDTH - flag_sprite_width) / 2,
-							pixel_y + (CELL_WIDTH - flag_sprite_height) / 2
+							pixel.x + (CELL_WIDTH - flag_sprite_width) / 2,
+							pixel.y + (CELL_WIDTH - flag_sprite_height) / 2
 						);
 					}
 				}
 			} else {
 				gfx_SetColor(LIGHT_GRAY);
-				gfx_FillRectangle(pixel_x + 1, pixel_y + 1, CELL_WIDTH - 2, CELL_WIDTH - 2);
+				gfx_FillRectangle(pixel.x + 1, pixel.y + 1, CELL_WIDTH - 2, CELL_WIDTH - 2);
 				gfx_SetColor(DARK_GRAY);
-				gfx_Rectangle(pixel_x, pixel_y, CELL_WIDTH, CELL_WIDTH);
+				gfx_Rectangle(pixel.x, pixel.y, CELL_WIDTH, CELL_WIDTH);
 				
-				if (cell.surrounding >= 1) {
+				if (1 <= cell.surrounding && cell.surrounding <= 8) {
 					const gfx_sprite_t *sprites[] = { _1, _2, _3, _4, _5, _6, _7, _8 };
 					gfx_TransparentSprite(sprites[cell.surrounding - 1],
-						pixel_x + (CELL_WIDTH - DIGIT_SPRITE_WIDTH) / 2,
-						pixel_y + (CELL_WIDTH - DIGIT_SPRITE_HEIGHT) / 2
+						pixel.x + (CELL_WIDTH - DIGIT_SPRITE_WIDTH) / 2,
+						pixel.y + (CELL_WIDTH - DIGIT_SPRITE_HEIGHT) / 2
 					);
 				}
 			}
@@ -198,15 +203,15 @@ void draw_board(struct Cell *cells, bool reveal, int clicked_x, int clicked_y, b
 	// Box outline overlay (cursor)
 	gfx_SetColor(BLACK);
 	gfx_Rectangle(
-		X_PIXEL(xcur), 
-		Y_PIXEL(ycur), 
+		X_PIXEL(cur.x),
+		Y_PIXEL(cur.y), 
 		CELL_WIDTH, CELL_WIDTH
 	);
 	
 	// Draw a border if it goes no further
 	gfx_SetColor(RED);	
-	if (ymin == 0 && 0 <= yoffset && yoffset <= 2) gfx_FillRectangle(0, 0, LCD_WIDTH, 2);
-	if (ymax == height && yoffset <= 0) gfx_FillRectangle(0, LCD_HEIGHT - 2, LCD_WIDTH, 2);
-	if (xmin == 0 && 0 <= xoffset && xoffset <= 2) gfx_FillRectangle(0, 0, 2, LCD_HEIGHT);
-	if (xmax == width && xoffset <= 0) gfx_FillRectangle(LCD_WIDTH - 2, 0, 2, LCD_HEIGHT);
+	if (min.y == 0 && 0 <= offset.y && offset.y <= 2) gfx_FillRectangle(0, 0, LCD_WIDTH, 2);
+	if (max.y == height && offset.y <= 0) gfx_FillRectangle(0, LCD_HEIGHT - 2, LCD_WIDTH, 2);
+	if (min.x == 0 && 0 <= offset.x && offset.x <= 2) gfx_FillRectangle(0, 0, 2, LCD_HEIGHT);
+	if (max.x == width && offset.x <= 0) gfx_FillRectangle(LCD_WIDTH - 2, 0, 2, LCD_HEIGHT);
 }

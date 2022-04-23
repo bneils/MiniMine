@@ -36,8 +36,8 @@ extern "C" {
 // that the palette is in
 #define DIGIT_TO_COLOR(digit) (digit)
 
-#define X_PIXEL(x) ((x) * CELL_WIDTH + xoffset)
-#define Y_PIXEL(y) ((y) * CELL_WIDTH + yoffset)
+#define X_PIXEL(v) ((v) * CELL_WIDTH + offset.x)
+#define Y_PIXEL(v) ((v) * CELL_WIDTH + offset.y)
 
 enum Color {
 	TRANSPARENT = 0,
@@ -55,11 +55,13 @@ enum Color {
 };
 
 void draw_centered_text(char *s, int y, enum Color);
+
 void draw_pause_screen_key_value(char *s, uint8_t num, int y);
 void draw_pause_screen(void);
+
 void set_palette(void);
 void draw_menu(const char *);
-void draw_board(struct Cell *, bool reveal, int clicked_x, int clicked_y, bool partial_redraw);
+void draw_board(struct Cell *, bool reveal, struct Vec2D clicked, bool partial_redraw);
 
 #ifdef __cplusplus
 }

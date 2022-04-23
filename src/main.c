@@ -3,6 +3,7 @@
 #include <keypadc.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 #include "board.h"
 #include "draw.h"
 
@@ -10,13 +11,22 @@
 // This also lets me avoid having some config struct that I have to
 // constantly dereference. Also, I hate having to change function prototypes.
 int width, height, mines, size;
-int xcur, ycur; // in cells
-int xoffset, yoffset; // in px
+struct Vec2D cur; // in cells
+struct Vec2D offset; // in px
 
 int menu_screen(void);
 void gameloop(void);
 
-/* 0 on success */
+enum Difficulty {
+	EASY = 0,
+	MEDIUM,
+	HARD
+};
+
+/*
+ * Asks the user to configure global game variables.
+ * width, height, mines, offset.x, offset.y, cur.x, cur.y, size are set if 0 is returned.
+ */
 int menu_screen(void) {
 	const char *diffs[] = {
 		"Easy>",
@@ -31,34 +41,31 @@ int menu_screen(void) {
 	};
 	
 	uint8_t key = 0;
-	static uint8_t difficulty = 0;
+	static enum Difficulty difficulty = EASY;
 	
 	// Menu screen
 	for (;;) {
-		if (key == sk_Left && difficulty > 0) {
+		if (key == sk_Left && difficulty > EASY) {
 			--difficulty;
-		}
-		if (key == sk_Right && difficulty < sizeof(diffs) / sizeof(diffs[0]) - 1) {
+		} else if (key == sk_Right && difficulty < HARD) {
 			++difficulty;
-		}
-		if (key == sk_Clear) {
-			return 1;
-		}
-		if (key == sk_2nd) {
+		} else if (key == sk_2nd) {
 			return 0;
+		} else if (key == sk_Clear) {
+			return 1;
 		}
 		
 		width = settings[difficulty][0];
 		height = settings[difficulty][1];
-		mines = settings[difficulty][2];
+		mines = settings[difficulty][2];		
 		size = width * height;
+	
+		cur.x = width / 2;
+		cur.y = height / 2;
 		
-		xcur = width / 2;
-		ycur = height / 2;
-		
-		xoffset = (LCD_WIDTH - width * CELL_WIDTH) / 2;
-		yoffset = (LCD_HEIGHT - height * CELL_WIDTH) / 2;
-		
+		offset.x = (LCD_WIDTH - width * CELL_WIDTH) / 2;
+		offset.y = (LCD_HEIGHT - height * CELL_WIDTH) / 2;
+	
 		draw_menu(diffs[difficulty]);
 		gfx_SwapDraw();
 		
@@ -81,30 +88,35 @@ void gameloop(void) {
 		if (size > MAX_CELLS) {
 			break;
 		}
-
-		cells_init();
 		
-		bool can_interact = true, died = false, board_generated = false, running = true;
-		int clicked_x = 0, clicked_y = 0;
+		// I need to zero initialize the buffer because it needs to be displayed,
+		// and the actual board generation (that should do this) happens later.
+		memset(cells, 0, size * sizeof(struct Cell));
 		
 		bool force_redraw = true;
+		bool can_interact = true, died = false, board_generated = false, running = true;
+		struct Vec2D clicked;
+		clicked.x = clicked.y = 0;
+		
+		cells_place_mines(cells);
+		board_generated = true;
 		
 		while (running) {
 			// Sometimes the cursor goes offscreen, so if that happens the offset is changed.
 			int pixel;
-			int unmodified_offsets = 0;
+			int num_unmodified_offsets = 0;
 			
-			pixel = X_PIXEL(xcur);
-			if (pixel >= LCD_WIDTH) xoffset -= CELL_WIDTH;
-			else if (pixel < 0) xoffset += CELL_WIDTH;
-			else ++unmodified_offsets;
+			pixel = X_PIXEL(cur.x);
+			if (pixel >= LCD_WIDTH) offset.x -= CELL_WIDTH;
+			else if (pixel < 0) offset.x += CELL_WIDTH;
+			else ++num_unmodified_offsets;
 			
-			pixel = Y_PIXEL(ycur);
-			if (pixel >= LCD_HEIGHT) yoffset -= CELL_WIDTH;
-			else if (pixel < 0) yoffset += CELL_WIDTH;
-			else ++unmodified_offsets;
-			
-			draw_board(cells, died, clicked_x, clicked_y, unmodified_offsets == 2 && !force_redraw);
+			pixel = Y_PIXEL(cur.y);
+			if (pixel >= LCD_HEIGHT) offset.y -= CELL_WIDTH;
+			else if (pixel < 0) offset.y += CELL_WIDTH;
+			else ++num_unmodified_offsets;
+
+			draw_board(cells, died, clicked, num_unmodified_offsets == 2 && !force_redraw);			
 			force_redraw = false;
 			gfx_SwapDraw();
 			
@@ -135,16 +147,16 @@ wait_poll_key:
 					break;
 				// Movement controls
 				case sk_Left:
-					if (xcur > 0) --xcur;
+					if (cur.x > 0) --cur.x;
 					break;
 				case sk_Right:
-					if (xcur < width - 1) ++xcur;
+					if (cur.x < width - 1) ++cur.x;
 					break;
 				case sk_Up:
-					if (ycur > 0) --ycur;
+					if (cur.y > 0) --cur.y;
 					break;
 				case sk_Down:
-					if (ycur < height - 1) ++ycur;
+					if (cur.y < height - 1) ++cur.y;
 					break;
 				case sk_2nd:
 					if (!can_interact) {
@@ -160,14 +172,14 @@ wait_poll_key:
 						board_generated = true;
 					}
 					
-					clicked_x = xcur;
-					clicked_y = ycur;
+					// When a mine is hit we need to render what mine was hit
+					clicked = cur;
 					
-					if (cells_click(cells, xcur, ycur)) {
+					if (cells_click(cells, cur)) {
 						died = true;
 						can_interact = false;
 						force_redraw = true;
-						draw_board(cells, died, clicked_x, clicked_y, !force_redraw);
+						draw_board(cells, died, clicked, !force_redraw);
 						// Tell the player they have no skill
 						// You need to force a redraw here because it won't happen until
 						// after the pause screen is shown
@@ -198,7 +210,7 @@ wait_poll_key:
 						}
 						
 						// Tell the player they're adequate
-						draw_board(cells, died, clicked_x, clicked_y, !force_redraw);
+						draw_board(cells, died, clicked, !force_redraw);
 						draw_pause_screen();
 						draw_centered_text("You won!", LCD_HEIGHT / 2, BLACK);
 						draw_centered_text("You're okay, I guess.", LCD_HEIGHT / 2 + CHAR_HEIGHT, BLACK);

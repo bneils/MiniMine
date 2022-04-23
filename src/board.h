@@ -7,13 +7,17 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <string.h>
 
 #define MAX_CELLS (16 * 30)
-#define cells_init() { memset(cells, 0, size * sizeof(struct Cell)); }
 
 // You might cringe at this, but it's the best solution I have now
-extern int width, height, mines, xoffset, yoffset, xcur, ycur, size;
+extern int width, height, mines, size;
+
+struct Vec2D {
+	int x, y;
+};
+
+extern struct Vec2D offset, cur;
 
 struct __attribute__((__packed__)) Cell {
 	// This bit is being used for partial redraws.
@@ -28,7 +32,7 @@ struct __attribute__((__packed__)) Cell {
 int cursor_pos(void);
 bool check_bounds(int x, int y);
 void cells_place_mines(struct Cell *);
-bool cells_click(struct Cell *cells, int x, int y);
+bool cells_click(struct Cell *cells, struct Vec2D pos);
 
 #ifdef __cplusplus
 }
