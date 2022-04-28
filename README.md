@@ -7,6 +7,8 @@ My implementation of Minesweeper allows for the following:
 - A pause screen to show remaining mines
 - A menu to choose between the original three difficulties
 
+Images can be found on [Cemetech](https://www.cemetech.net/downloads/files/2246/x2556).
+
 # Building
 Uses the [CE toolchain](https://github.com/CE_programming/toolchain/).
 Depends on either the [latest nightly](https://github.com/CE_programming/toolchain/releases/tag/nightly), or any release after Sept. 2021 due to a compiler bug.
