@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <stdio.h>
 #include "board.h"
 #include "draw.h"
 
@@ -17,23 +18,11 @@ struct Vec2D offset; // in px
 int menu_screen(void);
 void gameloop(void);
 
-enum Difficulty {
-	EASY = 0,
-	MEDIUM,
-	HARD
-};
-
 /*
  * Asks the user to configure global game variables.
  * width, height, mines, offset.x, offset.y, cur.x, cur.y, size are set if 0 is returned.
  */
-int menu_screen(void) {
-	const char *diffs[] = {
-		"Easy>",
-		"<Medium>",
-		"<Hard"
-	};
-	
+int menu_screen(void) {	
 	const uint8_t settings[][3] = {
 		{9, 9, 10},
 		{16, 16, 40},
@@ -45,9 +34,9 @@ int menu_screen(void) {
 	
 	// Menu screen
 	for (;;) {
-		if (key == sk_Left && difficulty > EASY) {
+		if (key == sk_Up && difficulty > EASY) {
 			--difficulty;
-		} else if (key == sk_Right && difficulty < HARD) {
+		} else if (key == sk_Down && difficulty < HARD) {
 			++difficulty;
 		} else if (key == sk_2nd) {
 			return 0;
@@ -66,7 +55,7 @@ int menu_screen(void) {
 		offset.x = (LCD_WIDTH - width * CELL_WIDTH) / 2;
 		offset.y = (LCD_HEIGHT - height * CELL_WIDTH) / 2;
 	
-		draw_menu(diffs[difficulty]);
+		draw_menu(difficulty);
 		gfx_SwapDraw();
 		
 		while (!(key = os_GetCSC()))
@@ -183,9 +172,10 @@ wait_poll_key:
 						// Tell the player they have no skill
 						// You need to force a redraw here because it won't happen until
 						// after the pause screen is shown
-						draw_pause_screen();
-						draw_centered_text("You lost!", LCD_HEIGHT / 2, BLACK);
-						draw_centered_text("Get gud. ;(", LCD_HEIGHT / 2 + CHAR_HEIGHT, BLACK);
+						draw_panel_canvas();
+						gfx_SetColor(BLACK);
+						draw_panel_text("You lost!", 0, CENTER);
+						draw_panel_text("Get gud. ;(", 1, CENTER);
 						gfx_SwapDraw();
 						msleep(500);
 						while (!(os_GetCSC()))
@@ -211,9 +201,10 @@ wait_poll_key:
 						
 						// Tell the player they're adequate
 						draw_board(cells, died, clicked, !force_redraw);
-						draw_pause_screen();
-						draw_centered_text("You won!", LCD_HEIGHT / 2, BLACK);
-						draw_centered_text("You're okay, I guess.", LCD_HEIGHT / 2 + CHAR_HEIGHT, BLACK);
+						draw_panel_canvas();
+						gfx_SetColor(BLACK);
+						draw_panel_text("You won!", 0, CENTER);
+						draw_panel_text("Good job!", 1, CENTER);
 						gfx_SwapDraw();
 						msleep(500);
 						while (!(os_GetCSC()))
@@ -236,7 +227,7 @@ wait_poll_key:
 				case sk_Mode:
 					// Bring up the pause screen, which can show information
 					gfx_BlitScreen();
-					draw_pause_screen();
+					draw_panel_canvas();
 					
 					int nflags = 0;
 					for (int i = 0; i < size; ++i) {
@@ -245,10 +236,10 @@ wait_poll_key:
 						}
 					}
 					
-					draw_pause_screen_key_value("Mines remaining:", (nflags <= mines) ? mines - nflags : 0, PAUSE_LABEL_TEXT_Y);
-					draw_pause_screen_key_value("Total mines:", mines, PAUSE_LABEL_TEXT_Y + PAUSE_LABEL_ROW_SPACING);
-					draw_pause_screen_key_value("Width:", width, PAUSE_LABEL_TEXT_Y + PAUSE_LABEL_ROW_SPACING * 2);
-					draw_pause_screen_key_value("Height:", height, PAUSE_LABEL_TEXT_Y + PAUSE_LABEL_ROW_SPACING * 3);
+					char buf[15];
+					sprintf(buf, "%d/%d", (nflags <= mines) ? mines - nflags : 0, mines);
+					gfx_SetColor(BLACK);
+					draw_panel_text(buf, 0, LEFT);
 					gfx_SwapDraw();
 					while (!(os_GetCSC()))
 						;

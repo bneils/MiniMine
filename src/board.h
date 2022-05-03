@@ -17,6 +17,12 @@ struct Vec2D {
 	int x, y;
 };
 
+enum Difficulty {
+	EASY = 0,
+	MEDIUM,
+	HARD
+};
+
 extern struct Vec2D offset, cur;
 
 struct __attribute__((__packed__)) Cell {

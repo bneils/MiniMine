@@ -1,4 +1,4 @@
-unsigned char mypalette[28] =
+unsigned char mypalette[30] =
 {
     0x19, 0xfa, /*   0: rgb(247, 134, 206) */
     0x1f, 0x00, /*   1: rgb(  0,   0, 255) */
@@ -12,6 +12,7 @@ unsigned char mypalette[28] =
     0x31, 0xc6, /*   9: rgb(140, 142, 140) */
     0xff, 0xff, /*  10: rgb(255, 255, 255) */
     0x18, 0xe3, /*  11: rgb(197, 198, 197) */
-    0xad, 0xb5, /*  12: rgb(107, 109, 107) */
-    0x20, 0x7c, /*  13: rgb(255,   8,   0) */
+    0x20, 0x7f, /*  12: rgb(255, 202,   0) */
+    0xad, 0xb5, /*  13: rgb(107, 109, 107) */
+    0x20, 0x7c, /*  14: rgb(255,   8,   0) */
 };

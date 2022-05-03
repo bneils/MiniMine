@@ -10,6 +10,6 @@ My implementation of Minesweeper allows for the following:
 Images can be found on [Cemetech](https://www.cemetech.net/downloads/files/2246/x2556).
 
 # Building
-Uses the [CE toolchain](https://github.com/CE_programming/toolchain/).
-Depends on either the [latest nightly](https://github.com/CE_programming/toolchain/releases/tag/nightly), or any release after Sept. 2021 due to a compiler bug.
+Uses the [CE toolchain](https://github.com/CE-programming/toolchain/).
+Depends on either the [latest nightly](https://github.com/CE-programming/toolchain/releases/tag/nightly), or any release after Sept. 2021 due to a compiler bug.
 If you download the nightly build, make sure to download the correct clibs as well.

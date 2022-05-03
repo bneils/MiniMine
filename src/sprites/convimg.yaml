@@ -16,6 +16,8 @@ palettes:
       - color: {index: 9, r: 140, g: 140, b: 140} # bottomright of tile (DARK GRAY)
       - color: {index: 10, r: 255, g: 255, b: 255} # topleft of tile (WHITE)
       - color: {index: 11, r: 200, g: 200, b: 200} # middle of tile (LIGHT GRAY) 
+
+      - color: {index: 12, r: 252, g: 202, b: 3 } # yellow
     images: automatic
 
 converts:

@@ -6,51 +6,66 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <tice.h>
+#include <string.h>
+#include <stdio.h>
 
-/* display a centered label in the pause menu */
-void draw_centered_text(char *s, int y, enum Color color) {
-	gfx_SetTextFGColor(color);
-	gfx_SetTextBGColor(TRANSPARENT);
-	gfx_PrintStringXY(s, 
-		(LCD_WIDTH - gfx_GetStringWidth(s)) / 2, y
-	);
-}
+#define PANEL_ROW_PIXEL(row) (PANEL_INNER_Y + PANEL_TEXT_MARGIN + (row) * (CHAR_HEIGHT + 2))
 
-/* display a key/value pair in the pause menu */
-void draw_pause_screen_key_value(char *s, uint8_t num, int y) {
-	char byte_buf[4];
-	gfx_SetTextFGColor(BLACK);
-	gfx_SetTextBGColor(TRANSPARENT);
-	sprintf(byte_buf, "%d", num);
-	gfx_PrintStringXY(s, PAUSE_LABEL_TEXT_X, y);
-	gfx_PrintStringXY(byte_buf,
-		PAUSE_LABEL_TEXT_X + CHAR_HEIGHT + gfx_GetStringWidth(s),
-		y
-	);
-}
-
-void draw_pause_screen(void) {
+/* draws a canvas for text to be put on */
+void draw_panel_canvas(void) {
 	gfx_SetColor(WHITE);
 	gfx_Rectangle(
-		PAUSE_LABEL_OUTER_X, PAUSE_LABEL_OUTER_Y,
-		PAUSE_LABEL_WIDTH, PAUSE_LABEL_HEIGHT
+		PANEL_OUTER_X, PANEL_OUTER_Y,
+		PANEL_WIDTH, PANEL_HEIGHT
 	);
 	gfx_Rectangle(
-		PAUSE_LABEL_OUTER_X + 2, PAUSE_LABEL_OUTER_Y + 2,
-		PAUSE_LABEL_WIDTH - 4, PAUSE_LABEL_HEIGHT - 4
+		PANEL_OUTER_X + 2, PANEL_OUTER_Y + 2,
+		PANEL_WIDTH - 4, PANEL_HEIGHT - 4
 	);
 	
 	gfx_SetColor(BLACK);
 	gfx_Rectangle(
-		PAUSE_LABEL_OUTER_X + 1, PAUSE_LABEL_OUTER_Y + 1,
-		PAUSE_LABEL_WIDTH - 2, PAUSE_LABEL_HEIGHT - 2
+		PANEL_OUTER_X + 1, PANEL_OUTER_Y + 1,
+		PANEL_WIDTH - 2, PANEL_HEIGHT - 2
 	);
 	
 	gfx_SetColor(LIGHT_GRAY);
 	gfx_FillRectangle(
-		PAUSE_LABEL_INNER_X, PAUSE_LABEL_INNER_Y, 
-		PAUSE_LABEL_WIDTH - 2 * PAUSE_LABEL_BORDER_WIDTH, PAUSE_LABEL_HEIGHT - 2 * PAUSE_LABEL_BORDER_WIDTH
+		PANEL_INNER_X, PANEL_INNER_Y, 
+		PANEL_WIDTH - 2 * PANEL_THICKNESS, PANEL_HEIGHT - 2 * PANEL_THICKNESS
 	);
+}
+
+/* draws some aligned text on the canvas.
+ * textfgcolor must be set before called.
+ */
+void draw_panel_text(char *s, int row, enum Alignment align) {
+	gfx_SetTextBGColor(TRANSPARENT);
+
+	int x, y, pix_len;
+	pix_len = gfx_GetStringWidth(s);
+
+	switch (align) {
+		case LEFT:
+			x = PANEL_INNER_X + PANEL_TEXT_MARGIN;
+			break;
+		case RIGHT:
+			x = PANEL_OUTER_X - PANEL_THICKNESS - PANEL_TEXT_MARGIN - pix_len;
+			break;
+		case CENTER:
+		default:
+			x = (LCD_WIDTH - pix_len) / 2;
+			break;
+	}
+
+	y = PANEL_ROW_PIXEL(row);
+	gfx_PrintStringXY(s, x, y);
+}
+
+/* a little arrow that is left of the left alignment */
+void draw_panel_selection(int row) {
+	gfx_SetTextBGColor(TRANSPARENT);
+	gfx_PrintStringXY(">", PANEL_INNER_X + PANEL_TEXT_MARGIN - gfx_GetStringWidth(">"), PANEL_ROW_PIXEL(row));
 }
 
 void set_palette(void) {
@@ -59,66 +74,34 @@ void set_palette(void) {
 	gfx_SetPalette(mypalette, sizeof(mypalette), 0);
 }
 
-void draw_menu(const char *difficulty) {	
-	char buf[4];
-	
+void draw_menu(enum Difficulty difficulty) {	
+	char buf[10];
+
 	gfx_FillScreen(BLACK);
-	draw_centered_text("MiniMines by superhelix", MENU_TOP_PADDING, BLUE);
-
-	gfx_SetTextFGColor(WHITE);
+	draw_panel_canvas();
+	gfx_SetTextFGColor(BLUE);
+	draw_panel_text("MiniMines by superhelix", 0, CENTER);
 	
-	gfx_PrintStringXY(
-		difficulty,
-		(LCD_WIDTH - gfx_GetStringWidth(difficulty)) / 2,
-		MENU_TOP_PADDING + CHAR_HEIGHT * 6
-	);
+	gfx_SetTextFGColor(GREEN);
+	draw_panel_text("Easy", 2, LEFT);
+	gfx_SetTextFGColor(YELLOW);
+	draw_panel_text("Medium", 3, LEFT);
+	gfx_SetTextFGColor(RED);
+	draw_panel_text("Hard", 4, LEFT);
 	
-	sprintf(buf, "%d", width);
+	gfx_SetTextFGColor(BLACK);
+	// depends on the difficulty enum being in ascending order
+	draw_panel_selection(2 + difficulty);
 	
-	gfx_PrintStringXY(
-		"Width:",
-		MENU_LEFT_PADDING,
-		MENU_TOP_PADDING + CHAR_HEIGHT * 7
-	);
-	
-	gfx_PrintStringXY(
-		buf,
-		MENU_MID_PADDING,
-		MENU_TOP_PADDING + CHAR_HEIGHT * 7
-	);
-	
-	sprintf(buf, "%d", height);
-	
-	gfx_PrintStringXY(
-		"Height:",
-		MENU_LEFT_PADDING,
-		MENU_TOP_PADDING + CHAR_HEIGHT * 8
-	);
-	
-	gfx_PrintStringXY(
-		buf,
-		MENU_MID_PADDING,
-		MENU_TOP_PADDING + CHAR_HEIGHT * 8
-	);
-
+	sprintf(buf, "%dx%d", width, height);
+	draw_panel_text(buf, 1, LEFT);
 	sprintf(buf, "%d", mines);
-	
-	gfx_PrintStringXY(
-		"Mines:",
-		MENU_LEFT_PADDING,
-		MENU_TOP_PADDING + CHAR_HEIGHT * 9
-	);
-	
-	gfx_PrintStringXY(
-		buf,
-		MENU_MID_PADDING,
-		MENU_TOP_PADDING + CHAR_HEIGHT * 9
-	);
-	
-	draw_centered_text("2nd to interact (labels & unopened)", MENU_TOP_PADDING + CHAR_HEIGHT * 11, WHITE);
-	draw_centered_text("Arrow keys to move", MENU_TOP_PADDING + CHAR_HEIGHT * 12, WHITE);
-	draw_centered_text("Alpha to flag", MENU_TOP_PADDING + CHAR_HEIGHT * 13, WHITE);
-	draw_centered_text("Mode to pause", MENU_TOP_PADDING + CHAR_HEIGHT * 14, WHITE);
+	draw_panel_text(buf, 1, RIGHT);
+
+	draw_panel_text("2nd to interact", 6, LEFT);
+	draw_panel_text("Arrow keys to move", 7, LEFT);
+	draw_panel_text("Alpha to flag", 8, LEFT);
+	draw_panel_text("Mode to pause", 9, LEFT);
 }
 
 void draw_board(struct Cell *cells, bool reveal, struct Vec2D clicked, bool partial_redraw) {

@@ -1,5 +1,5 @@
 obj/*
 bin/*
-
+.vscode
 # Any misc. text files are used for keeping short notes
 *.txt
