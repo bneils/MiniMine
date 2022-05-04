@@ -28,7 +28,7 @@ void cells_place_mines(struct Cell *cells) {
 			pos.x = idx % width;
 			pos.y = idx / width;
 		} while (cells[idx].mine || (abs(pos.x - cur.x) <= 1 && abs(pos.y - cur.y) <= 1));
-		
+
 		cells[idx].mine = true;
 		for (int i = pos.y - 1; i <= pos.y + 1; ++i) {
 			for (int j = pos.x - 1; j <= pos.x + 1; ++j) {
@@ -40,23 +40,23 @@ void cells_place_mines(struct Cell *cells) {
 	}
 }
 
-/* Perform the action of clicking on a cell. 
+/* Perform the action of clicking on a cell.
  * Returns whether a mine was activated (dead).
  */
 bool cells_click(struct Cell *cells, struct Vec2D pos) {
 	struct Cell *cell = &cells[pos.y * width + pos.x];
-	
+
 	if (cell->flag) {
 		return false;
 	}
-	
+
 	if (cell->mine) {
 		return true;
 	}
-	
+
 	// We want to open a 3 x 3
 	if (cell->open) {
-		// We first need to make sure the number of surrounding flags 
+		// We first need to make sure the number of surrounding flags
 		// is equal to the cell's number
 		int num_flags = 0;
 		for (int i = pos.y - 1; i <= pos.y + 1; ++i) {
@@ -81,7 +81,7 @@ bool cells_click(struct Cell *cells, struct Vec2D pos) {
 		}
 		return false;
 	}
-	
+
 	if (cell->surrounding) {
 		cell->open = true;
 		cell->changed = true;
@@ -92,15 +92,15 @@ bool cells_click(struct Cell *cells, struct Vec2D pos) {
 		int next_cells[MAX_CELLS];
 		int *left = &next_cells[0];
 		int *right = &next_cells[1];
-		
+
 		*left = pos.y * width + pos.x;
-		
+
 		for (; left < right; ++left) {
-			struct Vec2D next = { 
+			struct Vec2D next = {
 				.x = *left % width,
 				.y = *left / width
 			};
-			
+
 			for (int i = next.y - 1; i <= next.y + 1; ++i) {
 				for (int j = next.x - 1; j <= next.x + 1; ++j) {
 					int idx = i * width + j;

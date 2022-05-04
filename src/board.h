@@ -17,18 +17,20 @@ struct Vec2D {
 	int x, y;
 };
 
-enum Difficulty {
-	EASY = 0,
-	MEDIUM,
-	HARD
+enum MenuOption {
+	MENU_EASY = 0,
+	MENU_MEDIUM,
+	MENU_HARD,
+	MENU_EXIT
 };
 
+extern enum MenuOption option;
 extern struct Vec2D offset, cur;
 
 struct __attribute__((__packed__)) Cell {
 	// This bit is being used for partial redraws.
 	unsigned char changed: 1;
-	
+
 	unsigned char flag: 1;
 	unsigned char open: 1;
 	unsigned char mine: 1;
