@@ -34,13 +34,13 @@ extern "C" {
 // that the palette is in
 #define DIGIT_TO_COLOR(digit) (digit)
 
-#define X_PIXEL(v) ((v) * CELL_WIDTH + offset.x)
-#define Y_PIXEL(v) ((v) * CELL_WIDTH + offset.y)
+#define X_PIXEL(v) ((v) * CELL_WIDTH + g_offset.x)
+#define Y_PIXEL(v) ((v) * CELL_WIDTH + g_offset.y)
 
 enum Alignment {
-	LEFT,
-	CENTER,
-	RIGHT
+	ALIGN_LEFT,
+	ALIGN_CENTER,
+	ALIGN_RIGHT
 };
 
 // these are the colors of digits

@@ -11,9 +11,14 @@
 // I don't want to pass a million parameters to each function.
 // This also lets me avoid having some config struct that I have to
 // constantly dereference. Also, I hate having to change function prototypes.
-int width, height, mines, size;
-struct Vec2D cur; // in cells
-struct Vec2D offset; // in px
+int g_width, g_height, g_mines, g_size, g_flags;
+enum MenuOption g_menu_option;
+
+// Used to measure time not spent paused
+uint24_t g_seconds_elapsed;
+
+struct Vec2D g_cur; // in cells
+struct Vec2D g_offset; // in px
 
 static const char *difficulty_names[] = {
 	"Easy", "Medium", "Hard"
@@ -50,7 +55,7 @@ int selection_prompt(int lower, int upper, int (*callback)(int key, int idx)) {
 
 /*
  * Asks the user to configure global game variables.
- * width, height, mines, offset, cur, & size are set if 0 is returned.
+ * g_width, g_height, g_mines, g_offset, g_cur, flags, & g_size are set if 0 is returned.
  */
 int menu_screen(int key_pressed, int selection) {
 	const uint8_t settings[][3] = {
@@ -64,21 +69,45 @@ int menu_screen(int key_pressed, int selection) {
 	}
 
 	if (selection != MENU_EXIT) {
-		width = settings[selection][0];
-		height = settings[selection][1];
-		mines = settings[selection][2];
-		size = width * height;
+		g_width = settings[selection][0];
+		g_height = settings[selection][1];
+		g_mines = settings[selection][2];
+		g_size = g_width * g_height;
 
-		cur.x = width / 2;
-		cur.y = height / 2;
+		g_cur.x = g_width / 2;
+		g_cur.y = g_height / 2;
 
-		offset.x = (LCD_WIDTH - width * CELL_WIDTH) / 2;
-		offset.y = (LCD_HEIGHT - height * CELL_WIDTH) / 2;
+		g_offset.x = (LCD_WIDTH - g_width * CELL_WIDTH) / 2;
+		g_offset.y = (LCD_HEIGHT - g_height * CELL_WIDTH) / 2;
+		g_flags = 0;
 	}
 	draw_menu((enum MenuOption)selection);
 	gfx_SwapDraw();
 
 	return 1;
+}
+
+int pause_screen(int key_pressed, int selection) {
+	gfx_BlitScreen();
+	draw_panel_canvas();
+
+	char buf[10];
+	int effective_mines = g_mines - g_flags;
+	sprintf(buf, "%d/%d", (effective_mines >= 0) ? effective_mines : 0, g_mines);
+	gfx_SetTextFGColor(BLACK);
+	draw_panel_text(buf, 0, ALIGN_LEFT);
+	draw_panel_text(difficulty_names[g_menu_option], 0, ALIGN_CENTER);
+
+	sprintf(buf, "%03d", g_seconds_elapsed);
+	draw_panel_text(buf, 0, ALIGN_RIGHT);
+
+	draw_panel_text("Resume", 2, ALIGN_LEFT);
+	draw_panel_text("Save and quit", 3, ALIGN_LEFT);
+	draw_panel_text("Quit", 4, ALIGN_LEFT);
+
+	draw_panel_selection(selection + 2);
+	gfx_SwapDraw();
+	return key_pressed != sk_2nd;
 }
 
 /* 0 on continue, 1 on exit */
@@ -94,29 +123,30 @@ void gameloop(void) {
 
 		// I need to zero initialize the buffer because it needs to be displayed,
 		// and the actual board generation (that should do this) happens later.
-		memset(cells, 0, size * sizeof(struct Cell));
+		memset(cells, 0, g_size * sizeof(struct Cell));
 
 		bool force_redraw = true;
 		bool can_interact = true, died = false, board_generated = false, running = true;
 		struct Vec2D clicked;
 		clicked.x = clicked.y = 0;
 
-		cells_place_mines(cells);
-		board_generated = true;
+		// Denotes the beginning of a time duration, where the end is whenever the pause
+		// screen is shown. last_game_timestamp is undefined until the board is generated.
+		clock_t last_game_timestamp, clocks_elapsed = 0;
 
 		while (running) {
-			// Sometimes the cursor goes offscreen, so if that happens the offset is changed.
+			// Sometimes the cursor goes offscreen, so if that happens the g_offset is changed.
 			int pixel;
 			int num_unmodified_offsets = 0;
 
-			pixel = X_PIXEL(cur.x);
-			if (pixel >= LCD_WIDTH) offset.x -= CELL_WIDTH;
-			else if (pixel < 0) offset.x += CELL_WIDTH;
+			pixel = X_PIXEL(g_cur.x);
+			if (pixel >= LCD_WIDTH) g_offset.x -= CELL_WIDTH;
+			else if (pixel < 0) g_offset.x += CELL_WIDTH;
 			else ++num_unmodified_offsets;
 
-			pixel = Y_PIXEL(cur.y);
-			if (pixel >= LCD_HEIGHT) offset.y -= CELL_WIDTH;
-			else if (pixel < 0) offset.y += CELL_WIDTH;
+			pixel = Y_PIXEL(g_cur.y);
+			if (pixel >= LCD_HEIGHT) g_offset.y -= CELL_WIDTH;
+			else if (pixel < 0) g_offset.y += CELL_WIDTH;
 			else ++num_unmodified_offsets;
 
 			draw_board(cells, died, clicked, num_unmodified_offsets == 2 && !force_redraw);
@@ -146,16 +176,16 @@ wait_poll_key:
 			switch (key) {
 				// Movement controls
 				case sk_Left:
-					if (cur.x > 0) --cur.x;
+					if (g_cur.x > 0) --g_cur.x;
 					break;
 				case sk_Right:
-					if (cur.x < width - 1) ++cur.x;
+					if (g_cur.x < g_width - 1) ++g_cur.x;
 					break;
 				case sk_Up:
-					if (cur.y > 0) --cur.y;
+					if (g_cur.y > 0) --g_cur.y;
 					break;
 				case sk_Down:
-					if (cur.y < height - 1) ++cur.y;
+					if (g_cur.y < g_height - 1) ++g_cur.y;
 					break;
 				case sk_2nd:
 					if (!can_interact) {
@@ -166,15 +196,16 @@ wait_poll_key:
 					// I want to make sure the first click is a "good" one
 					if (!board_generated) {
 						// This should prevent the user from getting the same thing EVEN after ram resets.
-						srandom(clock());
+						last_game_timestamp = clock();
+						srandom(last_game_timestamp);
 						cells_place_mines(cells);
 						board_generated = true;
 					}
 
 					// When a mine is hit we need to render what mine was hit
-					clicked = cur;
+					clicked = g_cur;
 
-					if (cells_click(cells, cur)) {
+					if (cells_click(cells, g_cur)) {
 						died = true;
 						can_interact = false;
 						force_redraw = true;
@@ -184,8 +215,8 @@ wait_poll_key:
 						// after the pause screen is shown
 						draw_panel_canvas();
 						gfx_SetColor(BLACK);
-						draw_panel_text("You lost!", 0, CENTER);
-						draw_panel_text("Get gud. ;(", 1, CENTER);
+						draw_panel_text("You lost!", 0, ALIGN_CENTER);
+						draw_panel_text("Get gud. ;(", 1, ALIGN_CENTER);
 						gfx_SwapDraw();
 						msleep(500);
 						while (!(os_GetCSC()))
@@ -194,16 +225,16 @@ wait_poll_key:
 
 					// Scan the entire board to check if the win condition is met.
 					// I could alternatively decrement a counter everytime I opened something, but this is easier
-					int num_unknown = size;
-					for (struct Cell *right = &cells[size - 1]; right >= cells; --right) {
+					int num_unknown = g_size;
+					for (struct Cell *right = &cells[g_size - 1]; right >= cells; --right) {
 						num_unknown -= right->open;
 					}
 
-					if (num_unknown == mines) {
+					if (num_unknown == g_mines) {
 						can_interact = false;
 						force_redraw = true;
 						// All mines should be made flags when the game is won
-						for (struct Cell *right = &cells[size - 1]; right >= cells; --right) {
+						for (struct Cell *right = &cells[g_size - 1]; right >= cells; --right) {
 							if (!right->open) {
 								right->flag = 1;
 							}
@@ -213,8 +244,8 @@ wait_poll_key:
 						draw_board(cells, died, clicked, !force_redraw);
 						draw_panel_canvas();
 						gfx_SetColor(BLACK);
-						draw_panel_text("You won!", 0, CENTER);
-						draw_panel_text("Good job!", 1, CENTER);
+						draw_panel_text("You won!", 0, ALIGN_CENTER);
+						draw_panel_text("Good job!", 1, ALIGN_CENTER);
 						gfx_SwapDraw();
 						msleep(500);
 						while (!(os_GetCSC()))
@@ -231,32 +262,34 @@ wait_poll_key:
 					}
 					if (!cell->open) {
 						cell->changed = true;
+						if (cell->flag) --g_flags;
+						else			++g_flags;
 						cell->flag = !cell->flag;
 					}
 					break;
 				case sk_Mode:
-				case sk_Clear:
-					// Bring up the pause screen, which can show information
-					gfx_BlitScreen();
-					draw_panel_canvas();
-
-					int nflags = 0;
-					for (int i = 0; i < size; ++i) {
-						if (cells[i].flag) {
-							++nflags;
+					// Bring up the pause screen
+					if (board_generated) {
+						clock_t now = clock();
+						clocks_elapsed += now - last_game_timestamp;
+						g_seconds_elapsed = clocks_elapsed / CLOCKS_PER_SEC;
+						if (g_seconds_elapsed > 999) {
+							g_seconds_elapsed = 999;
 						}
 					}
 
-					char buf[15];
-					sprintf(buf, "%d/%d", (nflags <= mines) ? mines - nflags : 0, mines);
-					gfx_SetTextFGColor(BLACK);
-					draw_panel_text(buf, 0, LEFT);
-					draw_panel_text(difficulty_names[menu_option], 0, CENTER);
-					draw_panel_text("999", 0, RIGHT);
+					enum PauseOption option = selection_prompt(PAUSE_RESUME, PAUSE_QUIT, pause_screen);
+					switch (option) {
+						case PAUSE_SAVE_AND_QUIT:
+							// Save
+						case PAUSE_QUIT:
+							running = false;
+							break;
+						case PAUSE_RESUME:
+							break;
+					}
 
-					gfx_SwapDraw();
-					while (!(os_GetCSC()))
-						;
+					last_game_timestamp = clock();
 					force_redraw = true;
 					break;
 				default:

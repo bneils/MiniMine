@@ -11,7 +11,7 @@ extern "C" {
 #define MAX_CELLS (16 * 30)
 
 // You might cringe at this, but it's the best solution I have now
-extern int width, height, mines, size;
+extern int g_width, g_height, g_mines, g_size;
 
 struct Vec2D {
 	int x, y;
@@ -24,8 +24,14 @@ enum MenuOption {
 	MENU_EXIT
 };
 
-extern enum MenuOption option;
-extern struct Vec2D offset, cur;
+enum PauseOption {
+	PAUSE_RESUME = 0,
+	PAUSE_SAVE_AND_QUIT,
+	PAUSE_QUIT
+};
+
+extern enum MenuOption g_menu_option;
+extern struct Vec2D g_offset, g_cur;
 
 struct __attribute__((__packed__)) Cell {
 	// This bit is being used for partial redraws.

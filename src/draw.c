@@ -46,13 +46,13 @@ void draw_panel_text(const char *s, int row, enum Alignment align) {
 	pix_len = gfx_GetStringWidth(s);
 
 	switch (align) {
-		case LEFT:
+		case ALIGN_LEFT:
 			x = PANEL_INNER_X + PANEL_TEXT_MARGIN;
 			break;
-		case RIGHT:
-			x = PANEL_OUTER_X - PANEL_THICKNESS - PANEL_TEXT_MARGIN - pix_len;
+		case ALIGN_RIGHT:
+			x = PANEL_OUTER_X + PANEL_WIDTH - PANEL_THICKNESS - PANEL_TEXT_MARGIN - pix_len;
 			break;
-		case CENTER:
+		case ALIGN_CENTER:
 		default:
 			x = (LCD_WIDTH - pix_len) / 2;
 			break;
@@ -80,28 +80,30 @@ void draw_menu(enum MenuOption option) {
 	gfx_FillScreen(BLACK);
 	draw_panel_canvas();
 	gfx_SetTextFGColor(BLUE);
-	draw_panel_text("MiniMines by superhelix", 0, CENTER);
+	draw_panel_text("MiniMines by superhelix", 0, ALIGN_CENTER);
 
-	gfx_SetTextFGColor(DARK_GRAY);
-	draw_panel_text("Easy", 2, LEFT);
-	draw_panel_text("Medium", 3, LEFT);
-	draw_panel_text("Hard", 4, LEFT);
+	gfx_SetTextFGColor(GREEN);
+	draw_panel_text("Easy", 2, ALIGN_LEFT);
+	draw_panel_text("Medium", 3, ALIGN_LEFT);
+	draw_panel_text("Hard", 4, ALIGN_LEFT);
 
 	gfx_SetTextFGColor(RED);
-	draw_panel_text("Exit", 5, LEFT);
+	draw_panel_text("Exit", 5, ALIGN_LEFT);
 
 	gfx_SetTextFGColor(BLACK);
 	// depends on the option enum being in ascending order
 	draw_panel_selection(2 + option);
 
-	sprintf(buf, "%dx%d, %d mines", width, height, mines);
-	draw_panel_text(buf, 1, CENTER);
+	if (option != MENU_EXIT) {
+		sprintf(buf, "%dx%d, %d mines", g_width, g_height, g_mines);
+		draw_panel_text(buf, 1, ALIGN_CENTER);
+	}
 
-	draw_panel_text("2nd to interact.", 6, LEFT);
-	draw_panel_text("Arrow keys to move.", 7, LEFT);
-	draw_panel_text("Alpha to flag.", 8, LEFT);
-	draw_panel_text("Mode to pause.", 9, LEFT);
-	draw_panel_text("Clear here to exit.", 10, LEFT);
+	draw_panel_text("2nd to interact.", 6, ALIGN_LEFT);
+	draw_panel_text("Arrow keys to move.", 7, ALIGN_LEFT);
+	draw_panel_text("Alpha to flag.", 8, ALIGN_LEFT);
+	draw_panel_text("Mode to pause.", 9, ALIGN_LEFT);
+	draw_panel_text("Clear here to exit.", 10, ALIGN_LEFT);
 }
 
 void draw_board(struct Cell *cells, bool reveal, struct Vec2D clicked, bool partial_redraw) {
@@ -113,26 +115,26 @@ void draw_board(struct Cell *cells, bool reveal, struct Vec2D clicked, bool part
 	// want.
 	struct Vec2D min, max;
 
-	min.y = -offset.y / CELL_WIDTH;
+	min.y = -g_offset.y / CELL_WIDTH;
 	max.y = min.y + LCD_HEIGHT / CELL_WIDTH;
 	if (min.y < 0) min.y = 0;
-	if (max.y > height) max.y = height;
+	if (max.y > g_height) max.y = g_height;
 
-	min.x = -offset.x / CELL_WIDTH;
+	min.x = -g_offset.x / CELL_WIDTH;
 	max.x = min.x + LCD_WIDTH / CELL_WIDTH;
 	if (min.x < 0) min.x = 0;
-	if (max.x > width) max.x = width;
+	if (max.x > g_width) max.x = g_width;
 
 	if (partial_redraw) {
 		gfx_BlitScreen();
-	} else if (width < LCD_WIDTH / CELL_WIDTH || height < LCD_HEIGHT / CELL_WIDTH) {
+	} else if (g_width < LCD_WIDTH / CELL_WIDTH || g_height < LCD_HEIGHT / CELL_WIDTH) {
 		// There's no reason to draw the black background if nothing would show
 		gfx_FillScreen(BLACK);
 	}
 
 	for (int y = min.y; y < max.y; ++y) {
 		for (int x = min.x; x < max.x; ++x) {
-			struct Cell *cell_ptr = &cells[y * width + x];
+			struct Cell *cell_ptr = &cells[y * g_width + x];
 			struct Cell cell = *cell_ptr;
 
 			if (partial_redraw && !cell.changed) {
@@ -186,15 +188,15 @@ void draw_board(struct Cell *cells, bool reveal, struct Vec2D clicked, bool part
 	// Box outline overlay (cursor)
 	gfx_SetColor(BLACK);
 	gfx_Rectangle(
-		X_PIXEL(cur.x),
-		Y_PIXEL(cur.y),
+		X_PIXEL(g_cur.x),
+		Y_PIXEL(g_cur.y),
 		CELL_WIDTH, CELL_WIDTH
 	);
 
 	// Draw a border if it goes no further
 	gfx_SetColor(RED);
-	if (min.y == 0 && 0 <= offset.y && offset.y <= 2) gfx_FillRectangle(0, 0, LCD_WIDTH, 2);
-	if (max.y == height && offset.y <= 0) gfx_FillRectangle(0, LCD_HEIGHT - 2, LCD_WIDTH, 2);
-	if (min.x == 0 && 0 <= offset.x && offset.x <= 2) gfx_FillRectangle(0, 0, 2, LCD_HEIGHT);
-	if (max.x == width && offset.x <= 0) gfx_FillRectangle(LCD_WIDTH - 2, 0, 2, LCD_HEIGHT);
+	if (min.y == 0 && 0 <= g_offset.y && g_offset.y <= 2) gfx_FillRectangle(0, 0, LCD_WIDTH, 2);
+	if (max.y == g_height && g_offset.y <= 0) gfx_FillRectangle(0, LCD_HEIGHT - 2, LCD_WIDTH, 2);
+	if (min.x == 0 && 0 <= g_offset.x && g_offset.x <= 2) gfx_FillRectangle(0, 0, 2, LCD_HEIGHT);
+	if (max.x == g_width && g_offset.x <= 0) gfx_FillRectangle(LCD_WIDTH - 2, 0, 2, LCD_HEIGHT);
 }
