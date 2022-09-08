@@ -10,11 +10,9 @@ CXXFLAGS = -Wall -Wextra -Oz
 
 include $(shell cedev-config --makefile)
 
-# The AUR package maintainer installs it as "CEmu"
-CEMU := $(shell command -v cemu 2> /dev/null)
-ifndef CEMU
-	CEMU = CEmu
-endif
+.PHONY: CEmu cemu
 
+CEmu: all
+	CEmu --send ./bin/$(NAME).8xp
 cemu: all
-	$(CEMU) --send ./bin/$(NAME).8xp
+	cemu --send ./bin/$(NAME).8xp

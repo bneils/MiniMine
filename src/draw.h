@@ -66,7 +66,12 @@ void draw_panel_selection(int row);
 
 void set_palette(void);
 void draw_menu(enum MenuOption);
-void draw_board(struct Cell *, bool reveal, struct Vec2D clicked, bool partial_redraw);
+void draw_board(
+	struct Cell *,
+	bool reveal,
+	struct Vec2D clicked,
+	bool partial_redraw
+);
 
 #ifdef __cplusplus
 }

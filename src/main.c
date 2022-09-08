@@ -55,7 +55,8 @@ int selection_prompt(int lower, int upper, int (*callback)(int key, int idx)) {
 
 /*
  * Asks the user to configure global game variables.
- * g_width, g_height, g_mines, g_offset, g_cur, flags, & g_size are set if 0 is returned.
+ * g_width, g_height, g_mines, g_offset, g_cur, flags, &
+ * g_size are set if 0 is returned.
  */
 int menu_screen(int key_pressed, int selection) {
 	const uint8_t settings[][3] = {
@@ -126,16 +127,21 @@ void gameloop(void) {
 		memset(cells, 0, g_size * sizeof(struct Cell));
 
 		bool force_redraw = true;
-		bool can_interact = true, died = false, board_generated = false, running = true;
+		bool can_interact, died, board_generated, running;
+		can_interact = running = true;
+		died = board_generated = false;
+
 		struct Vec2D clicked;
 		clicked.x = clicked.y = 0;
 
-		// Denotes the beginning of a time duration, where the end is whenever the pause
-		// screen is shown. last_game_timestamp is undefined until the board is generated.
+		// Denotes the beginning of a time duration, where the end is
+		// whenever the pause screen is shown. last_game_timestamp is undefined
+		// until the board is generated.
 		clock_t last_game_timestamp, clocks_elapsed = 0;
 
 		while (running) {
-			// Sometimes the cursor goes offscreen, so if that happens the g_offset is changed.
+			// Sometimes the cursor goes offscreen, so if that happens the
+			// g_offset is changed.
 			int pixel;
 			int num_unmodified_offsets = 0;
 
@@ -149,7 +155,8 @@ void gameloop(void) {
 			else if (pixel < 0) g_offset.y += CELL_WIDTH;
 			else ++num_unmodified_offsets;
 
-			draw_board(cells, died, clicked, num_unmodified_offsets == 2 && !force_redraw);
+			draw_board(cells, died, clicked,
+				num_unmodified_offsets == 2 && !force_redraw);
 			force_redraw = false;
 			gfx_SwapDraw();
 
@@ -195,7 +202,8 @@ wait_poll_key:
 
 					// I want to make sure the first click is a "good" one
 					if (!board_generated) {
-						// This should prevent the user from getting the same thing EVEN after ram resets.
+						// This should prevent the user from getting the same 
+						// thing EVEN after ram resets.
 						last_game_timestamp = clock();
 						srandom(last_game_timestamp);
 						cells_place_mines(cells);
@@ -211,8 +219,8 @@ wait_poll_key:
 						force_redraw = true;
 						draw_board(cells, died, clicked, !force_redraw);
 						// Tell the player they have no skill
-						// You need to force a redraw here because it won't happen until
-						// after the pause screen is shown
+						// You need to force a redraw here because it won't
+						// happen until after the pause screen is shown
 						draw_panel_canvas();
 						gfx_SetColor(BLACK);
 						draw_panel_text("You lost!", 0, ALIGN_CENTER);
@@ -223,10 +231,13 @@ wait_poll_key:
 							;
 					}
 
-					// Scan the entire board to check if the win condition is met.
-					// I could alternatively decrement a counter everytime I opened something, but this is easier
+					// Scan the entire board to check if the win condition is
+					// met. I could alternatively decrement a counter everytime
+					// I opened something, but this is easier
 					int num_unknown = g_size;
-					for (struct Cell *right = &cells[g_size - 1]; right >= cells; --right) {
+					for (struct Cell *right = &cells[g_size - 1];
+						right >= cells;
+						--right) {
 						num_unknown -= right->open;
 					}
 
@@ -234,7 +245,9 @@ wait_poll_key:
 						can_interact = false;
 						force_redraw = true;
 						// All mines should be made flags when the game is won
-						for (struct Cell *right = &cells[g_size - 1]; right >= cells; --right) {
+						for (struct Cell *right = &cells[g_size - 1];
+							right >= cells;
+							--right) {
 							if (!right->open) {
 								right->flag = 1;
 							}
@@ -254,8 +267,8 @@ wait_poll_key:
 
 					break;
 				case sk_Alpha:
-					// Any interaction (Mutation) with the board when they're not allowed
-					// indicates the only thing they can do is quit
+					// Any interaction (Mutation) with the board when they're
+					// not allowed indicates the only thing they can do is quit
 					if (!can_interact) {
 						running = false;
 						break;
@@ -278,7 +291,9 @@ wait_poll_key:
 						}
 					}
 
-					enum PauseOption option = selection_prompt(PAUSE_RESUME, PAUSE_QUIT, pause_screen);
+					enum PauseOption option = selection_prompt(
+						PAUSE_RESUME, PAUSE_QUIT, pause_screen
+					);
 					switch (option) {
 						case PAUSE_SAVE_AND_QUIT:
 							// Save

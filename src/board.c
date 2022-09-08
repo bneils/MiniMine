@@ -20,13 +20,15 @@ void cells_place_mines(struct Cell *cells) {
 		int idx;
 		struct Vec2D pos;
 		// Make sure not to generate a mine such as to make (xcur, ycur)
-		// a mine, or a label with a number > 0. This will fail (infinite loop)
-		// if mines is too big that enough cells won't be available.
+		// a mine, or a label with a number > 0. This will cause an infinite
+		// loop if mines is too big that enough cells won't be available.
 		do {
 			idx = random() % g_size;
 			pos.x = idx % g_width;
 			pos.y = idx / g_width;
-		} while (cells[idx].mine || (abs(pos.x - g_cur.x) <= 1 && abs(pos.y - g_cur.y) <= 1));
+		} while (cells[idx].mine || (abs(pos.x - g_cur.x) <= 1 &&
+		         abs(pos.y - g_cur.y) <= 1));
+
 
 		cells[idx].mine = true;
 		for (int i = pos.y - 1; i <= pos.y + 1; ++i) {
@@ -72,7 +74,8 @@ bool cells_click(struct Cell *cells, struct Vec2D pos) {
 				for (int j = pos.x - 1; j <= pos.x + 1; ++j) {
 					struct Cell *surrounding_cell = &cells[i * g_width + j];
 					struct Vec2D surrounding_pos = { .x = j, .y = i };
-					if (check_bounds(j, i) && !surrounding_cell->open && cells_click(cells, surrounding_pos)) {
+					if (check_bounds(j, i) && !surrounding_cell->open &&
+					    cells_click(cells, surrounding_pos)) {
 						return true;
 					}
 				}
@@ -87,7 +90,8 @@ bool cells_click(struct Cell *cells, struct Vec2D pos) {
 	} else {
 		// Begin flood fill
 		// To explain this, left chases the right pointer until they meet.
-		// As left pointer moves to the right, it assigns new values at the right pointer (more than one) and incrementing that.
+		// As left pointer moves to the right, it assigns new values at the
+		// right pointer (more than one) and incrementing that.
 		int next_cells[MAX_CELLS];
 		int *left = &next_cells[0];
 		int *right = &next_cells[1];
@@ -103,7 +107,8 @@ bool cells_click(struct Cell *cells, struct Vec2D pos) {
 			for (int i = next.y - 1; i <= next.y + 1; ++i) {
 				for (int j = next.x - 1; j <= next.x + 1; ++j) {
 					int idx = i * g_width + j;
-					if (check_bounds(j, i) && !cells[idx].open && !cells[idx].flag) {
+					if (check_bounds(j, i) && !cells[idx].open &&
+					    !cells[idx].flag) {
 						cells[idx].open = true;
 						cells[idx].changed = true;
 						if (cells[idx].surrounding == 0) {
