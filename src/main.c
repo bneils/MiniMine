@@ -8,32 +8,66 @@
 #include "board.h"
 #include "draw.h"
 
-// I don't want to pass a million parameters to each function.
-// This also lets me avoid having some config struct that I have to
-// constantly dereference. Also, I hate having to change function prototypes.
-int g_width, g_height, g_mines, g_size, g_flags;
-enum MenuOption g_menu_option;
+int g_width;
+int g_height;
+int g_mines;
+int g_size;
+int g_flags;
 
 // Used to measure time not spent paused
-uint24_t g_seconds_elapsed;
+int g_seconds_elapsed;
 
 struct Vec2D g_cur; // in cells
 struct Vec2D g_offset; // in px
+
+static enum MenuOption menu_option;
 
 static const char *difficulty_names[] = {
 	"Easy", "Medium", "Hard"
 };
 
+/* The function selection_prompt() works by managing an index in an interval
+ * based on the calculator's arrow keys. It then invokes a callback function
+ * with: what the user pressed on the calculator, and what the index is now.
+ * It will invoke the callback if the user presses a key, regardless of whether
+ * it affected the index.
+ *
+ * The function takes as parameters:
+ *  - The lower bound
+ *  - The upper bound
+ *  - The callback
+ *
+ * The callback should return 0 to exit the loop.
+ * The function returns the index of the user's option.
+ */
 int selection_prompt(int, int, int (*)(int key, int idx));
+
+/* The menu_screen() function is a callback of selection_prompt().
+ * It asks the user to configure the game variables.
+ * The struct g_board is set if 0 is returned, but not otherwise.
+ */
 int menu_screen(int, int);
+
+/* The pause_screen() function is a callback of selection_prompt().
+ * It gives the user the opportunity to choose from a list of pause screen
+ * options.
+ */
+int pause_screen(int, int);
+
+/* The gameloop() function begins the game loop, performs all rendering,
+ * all game logic, etc.
+ */
 void gameloop(void);
 
-/* key-based selection in an integer range.
- * lower & upper define the range.
- * callback is called with the pressed key and integer in the range
- *  and returns 0 for final selection
- * the function returns the index decided upon by callback.
- */
+int main(void) {
+	gfx_Begin();
+	gfx_SetDrawBuffer();
+	set_palette();
+	gameloop();
+	gfx_End();
+	return 0;
+}
+
 int selection_prompt(int lower, int upper, int (*callback)(int key, int idx)) {
 	int current = lower;
 	int key = 0;
@@ -53,65 +87,6 @@ int selection_prompt(int lower, int upper, int (*callback)(int key, int idx)) {
 	return current;
 }
 
-/*
- * Asks the user to configure global game variables.
- * g_width, g_height, g_mines, g_offset, g_cur, flags, &
- * g_size are set if 0 is returned.
- */
-int menu_screen(int key_pressed, int selection) {
-	const uint8_t settings[][3] = {
-		{9, 9, 10},
-		{16, 16, 40},
-		{30, 16, 99}
-	};
-
-	if (key_pressed == sk_2nd) {
-		return 0;
-	}
-
-	if (selection != MENU_EXIT) {
-		g_width = settings[selection][0];
-		g_height = settings[selection][1];
-		g_mines = settings[selection][2];
-		g_size = g_width * g_height;
-
-		g_cur.x = g_width / 2;
-		g_cur.y = g_height / 2;
-
-		g_offset.x = (LCD_WIDTH - g_width * CELL_WIDTH) / 2;
-		g_offset.y = (LCD_HEIGHT - g_height * CELL_WIDTH) / 2;
-		g_flags = 0;
-	}
-	draw_menu((enum MenuOption)selection);
-	gfx_SwapDraw();
-
-	return 1;
-}
-
-int pause_screen(int key_pressed, int selection) {
-	gfx_BlitScreen();
-	draw_panel_canvas();
-
-	char buf[10];
-	int effective_mines = g_mines - g_flags;
-	sprintf(buf, "%d/%d", (effective_mines >= 0) ? effective_mines : 0, g_mines);
-	gfx_SetTextFGColor(BLACK);
-	draw_panel_text(buf, 0, ALIGN_LEFT);
-	draw_panel_text(difficulty_names[g_menu_option], 0, ALIGN_CENTER);
-
-	sprintf(buf, "%03d", g_seconds_elapsed);
-	draw_panel_text(buf, 0, ALIGN_RIGHT);
-
-	draw_panel_text("Resume", 2, ALIGN_LEFT);
-	draw_panel_text("Save and quit", 3, ALIGN_LEFT);
-	draw_panel_text("Quit", 4, ALIGN_LEFT);
-
-	draw_panel_selection(selection + 2);
-	gfx_SwapDraw();
-	return key_pressed != sk_2nd;
-}
-
-/* 0 on continue, 1 on exit */
 void gameloop(void) {
 	struct Cell cells[MAX_CELLS * sizeof(struct Cell)];
 
@@ -318,11 +293,55 @@ wait_poll_key:
 	}
 }
 
-int main(void) {
-	gfx_Begin();
-	gfx_SetDrawBuffer();
-	set_palette();
-	gameloop();
-	gfx_End();
-	return 0;
+int menu_screen(int key_pressed, int selection) {
+	const uint8_t settings[][3] = {
+		{9, 9, 10},
+		{16, 16, 40},
+		{30, 16, 99}
+	};
+
+	if (key_pressed == sk_2nd) {
+		if (selection != MENU_EXIT) {
+			g_width = settings[selection][0];
+			g_height = settings[selection][1];
+			g_mines = settings[selection][2];
+			g_size = g_width * g_height;
+
+			g_cur.x = g_width / 2;
+			g_cur.y = g_height / 2;
+
+			g_offset.x = (LCD_WIDTH - g_width * CELL_WIDTH) / 2;
+			g_offset.y = (LCD_HEIGHT - g_height * CELL_WIDTH) / 2;
+			g_flags = 0;
+		}
+		return 0;
+	}
+
+	draw_menu((enum MenuOption)selection);
+	gfx_SwapDraw();
+
+	return 1;
+}
+
+int pause_screen(int key_pressed, int selection) {
+	gfx_BlitScreen();
+	draw_panel_canvas();
+
+	char buf[10];
+	int effective_mines = g_mines - g_flags;
+	sprintf(buf, "%d/%d", (effective_mines >= 0) ? effective_mines : 0, g_mines);
+	gfx_SetTextFGColor(BLACK);
+	draw_panel_text(buf, 0, ALIGN_LEFT);
+	draw_panel_text(difficulty_names[menu_option], 0, ALIGN_CENTER);
+
+	sprintf(buf, "%03d", g_seconds_elapsed);
+	draw_panel_text(buf, 0, ALIGN_RIGHT);
+
+	draw_panel_text("Resume", 2, ALIGN_LEFT);
+	draw_panel_text("Save and quit", 3, ALIGN_LEFT);
+	draw_panel_text("Quit", 4, ALIGN_LEFT);
+
+	draw_panel_selection(selection + 2);
+	gfx_SwapDraw();
+	return key_pressed != sk_2nd;
 }
