@@ -5,11 +5,12 @@ My implementation of Minesweeper allows for the following:
 - Opening 3x3's when flags permit
 - Scrolling for large (16x30) games that go off screen (NOTE: A red line is used to denote the border)
 - A pause screen to show remaining mines
+- A time counter (in the pause screen)
 - A menu to choose between the original three difficulties
 
 Images can be found on [Cemetech](https://www.cemetech.net/downloads/files/2246/x2556).
 
 # Building
 Uses the [CE toolchain](https://github.com/CE-programming/toolchain/).
-Depends on either the [latest nightly](https://github.com/CE-programming/toolchain/releases/tag/nightly), or any release after Sept. 2021 due to a compiler bug.
-If you download the nightly build, make sure to download the correct clibs as well.
+If you are compiling yourself, make sure to have the binaries on your PATH.
+Having the correct clibs on your calculator is important as well.
