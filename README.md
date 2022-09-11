@@ -9,6 +9,7 @@ My implementation of Minesweeper allows for the following:
 - A menu to choose between the original three difficulties
 
 Images can be found on [Cemetech](https://www.cemetech.net/downloads/files/2246/x2556).
+Instructions on how to play are contained within the program.
 
 # Building
 Uses the [CE toolchain](https://github.com/CE-programming/toolchain/).
