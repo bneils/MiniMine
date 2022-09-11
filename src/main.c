@@ -117,6 +117,8 @@ void gameloop(void) {
 		while (running) {
 			// Sometimes the cursor goes offscreen, so if that happens the
 			// g_offset is changed.
+			// This is also used to calculate whether or not we need a redraw.
+
 			int pixel;
 			int num_unmodified_offsets = 0;
 
@@ -197,11 +199,15 @@ wait_poll_key:
 						// You need to force a redraw here because it won't
 						// happen until after the pause screen is shown
 						draw_panel_canvas();
-						gfx_SetColor(BLACK);
-						draw_panel_text("You lost!", 0, ALIGN_CENTER);
-						draw_panel_text("Get gud. ;(", 1, ALIGN_CENTER);
+						gfx_SetTextFGColor(RED);
+						draw_panel_text("You lost!", 2, ALIGN_CENTER);
+						gfx_SetTextFGColor(BLACK);
+						draw_panel_text("Practice makes progress.", 3,
+							ALIGN_CENTER);
+						draw_panel_text("To continue, press 2nd.", 4,
+							ALIGN_LEFT);
 						gfx_SwapDraw();
-						msleep(500);
+						msleep(250);
 						while (!(os_GetCSC()))
 							;
 					}
@@ -264,14 +270,14 @@ wait_poll_key:
 						if (g_seconds_elapsed > 999) {
 							g_seconds_elapsed = 999;
 						}
+					} else {
+						g_seconds_elapsed = 0;
 					}
 
 					enum PauseOption option = selection_prompt(
 						PAUSE_RESUME, PAUSE_QUIT, pause_screen
 					);
 					switch (option) {
-						case PAUSE_SAVE_AND_QUIT:
-							// Save
 						case PAUSE_QUIT:
 							running = false;
 							break;
@@ -301,20 +307,23 @@ int menu_screen(int key_pressed, int selection) {
 	};
 
 	if (key_pressed == sk_2nd) {
-		if (selection != MENU_EXIT) {
-			g_width = settings[selection][0];
-			g_height = settings[selection][1];
-			g_mines = settings[selection][2];
-			g_size = g_width * g_height;
-
-			g_cur.x = g_width / 2;
-			g_cur.y = g_height / 2;
-
-			g_offset.x = (LCD_WIDTH - g_width * CELL_WIDTH) / 2;
-			g_offset.y = (LCD_HEIGHT - g_height * CELL_WIDTH) / 2;
-			g_flags = 0;
-		}
 		return 0;
+	}
+
+	// Assigning these values is important before calling draw_menu().
+	// The function uses these global values to tell the user the board
+	// dimensions.
+	if (selection != MENU_EXIT) {
+		g_width = settings[selection][0];
+		g_height = settings[selection][1];
+		g_mines = settings[selection][2];
+		g_size = g_width * g_height;
+		g_cur.x = g_width / 2;
+		g_cur.y = g_height / 2;
+
+		g_offset.x = (LCD_WIDTH - g_width * CELL_WIDTH) / 2;
+		g_offset.y = (LCD_HEIGHT - g_height * CELL_WIDTH) / 2;
+		g_flags = 0;
 	}
 
 	draw_menu((enum MenuOption)selection);
@@ -338,8 +347,7 @@ int pause_screen(int key_pressed, int selection) {
 	draw_panel_text(buf, 0, ALIGN_RIGHT);
 
 	draw_panel_text("Resume", 2, ALIGN_LEFT);
-	draw_panel_text("Save and quit", 3, ALIGN_LEFT);
-	draw_panel_text("Quit", 4, ALIGN_LEFT);
+	draw_panel_text("Quit", 3, ALIGN_LEFT);
 
 	draw_panel_selection(selection + 2);
 	gfx_SwapDraw();

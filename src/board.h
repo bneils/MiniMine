@@ -26,7 +26,6 @@ enum MenuOption {
 
 enum PauseOption {
 	PAUSE_RESUME = 0,
-	PAUSE_SAVE_AND_QUIT,
 	PAUSE_QUIT
 };
 
