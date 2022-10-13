@@ -12,7 +12,5 @@ include $(shell cedev-config --makefile)
 
 .PHONY: CEmu cemu
 
-CEmu: all
-	CEmu --send ./bin/$(NAME).8xp
-cemu: all
-	cemu --send ./bin/$(NAME).8xp
+CEmu cemu: all
+	$@ --send ./bin/$(NAME).8xp
