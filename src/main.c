@@ -92,7 +92,7 @@ void gameloop(void) {
 
 	for (;;) {
 		// Set global config
-		int menu_option = selection_prompt(MENU_EASY, MENU_EXIT, menu_screen);
+		menu_option = selection_prompt(MENU_EASY, MENU_EXIT, menu_screen);
 		if (menu_option == MENU_EXIT) {
 			return;
 		}
@@ -179,7 +179,7 @@ wait_poll_key:
 
 					// I want to make sure the first click is a "good" one
 					if (!board_generated) {
-						// This should prevent the user from getting the same 
+						// This should prevent the user from getting the same
 						// thing EVEN after ram resets.
 						last_game_timestamp = clock();
 						srandom(last_game_timestamp);
