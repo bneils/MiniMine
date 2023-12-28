@@ -34,7 +34,7 @@ extern struct Vec2D g_offset, g_cur;
 
 struct __attribute__((__packed__)) Cell {
 	// This bit is being used for partial redraws.
-	unsigned char changed: 1;
+	unsigned char gfxupdate: 1;
 
 	unsigned char flag: 1;
 	unsigned char open: 1;

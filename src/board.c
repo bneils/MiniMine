@@ -1,9 +1,10 @@
 #include <stdint.h>
 #include <stdlib.h>
+
 #include <tice.h>
+#include <graphx.h>
 
 #include "board.h"
-#include <graphx.h>
 
 int cursor_pos(void) {
 	return g_cur.y * g_width + g_cur.x;
@@ -16,8 +17,8 @@ bool check_bounds(int x, int y) {
 
 /* cells must have the same dimensions as the global variables */
 void cells_place_mines(struct Cell *cells) {
-	for (int i = 0; i < g_mines; ++i) {
-		int idx;
+	for (int m = 0; m < g_mines; ++m) {
+		unsigned idx;
 		struct Vec2D pos;
 		// Make sure not to generate a mine such as to make (xcur, ycur)
 		// a mine, or a label with a number > 0. This will cause an infinite
@@ -28,7 +29,6 @@ void cells_place_mines(struct Cell *cells) {
 			pos.y = idx / g_width;
 		} while (cells[idx].mine || (abs(pos.x - g_cur.x) <= 1 &&
 		         abs(pos.y - g_cur.y) <= 1));
-
 
 		cells[idx].mine = true;
 		for (int i = pos.y - 1; i <= pos.y + 1; ++i) {
@@ -73,11 +73,12 @@ bool cells_click(struct Cell *cells, struct Vec2D pos) {
 			for (int i = pos.y - 1; i <= pos.y + 1; ++i) {
 				for (int j = pos.x - 1; j <= pos.x + 1; ++j) {
 					struct Cell *surrounding_cell = &cells[i * g_width + j];
-					struct Vec2D surrounding_pos = { .x = j, .y = i };
 					if (check_bounds(j, i) && !surrounding_cell->open &&
-					    cells_click(cells, surrounding_pos)) {
+					    surrounding_cell->mine) {
 						return true;
 					}
+					surrounding_cell->open = true;
+					surrounding_cell->gfxupdate = true;
 				}
 			}
 		}
@@ -86,23 +87,18 @@ bool cells_click(struct Cell *cells, struct Vec2D pos) {
 
 	if (cell->surrounding) {
 		cell->open = true;
-		cell->changed = true;
+		cell->gfxupdate = true;
 	} else {
-		// Begin flood fill
-		// To explain this, left chases the right pointer until they meet.
-		// As left pointer moves to the right, it assigns new values at the
-		// right pointer (more than one) and incrementing that.
-		int next_cells[MAX_CELLS];
-		int *left = &next_cells[0];
-		int *right = &next_cells[1];
+		// Flood fill using a FIFO queue data structure
+		// using an array implementation.
+		struct Vec2D next_cells[MAX_CELLS];
+		struct Vec2D *left = &next_cells[0];
+		struct Vec2D *right = &next_cells[1];
 
-		*left = pos.y * g_width + pos.x;
+		*left = pos;
 
 		for (; left < right; ++left) {
-			struct Vec2D next = {
-				.x = *left % g_width,
-				.y = *left / g_width
-			};
+			struct Vec2D next = *left;
 
 			for (int i = next.y - 1; i <= next.y + 1; ++i) {
 				for (int j = next.x - 1; j <= next.x + 1; ++j) {
@@ -110,9 +106,9 @@ bool cells_click(struct Cell *cells, struct Vec2D pos) {
 					if (check_bounds(j, i) && !cells[idx].open &&
 					    !cells[idx].flag) {
 						cells[idx].open = true;
-						cells[idx].changed = true;
+						cells[idx].gfxupdate = true;
 						if (cells[idx].surrounding == 0) {
-							*right++ = idx;
+							*right++ = (struct Vec2D) {.x = j, .y = i};
 						}
 					}
 				}

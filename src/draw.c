@@ -43,7 +43,7 @@ void draw_panel_canvas(void) {
 void draw_panel_text(const char *s, int row, enum Alignment align) {
 	gfx_SetTextBGColor(TRANSPARENT);
 
-	int x, y, pix_len;
+	unsigned x, y, pix_len;
 	pix_len = gfx_GetStringWidth(s);
 
 	switch (align) {
@@ -106,7 +106,6 @@ void draw_menu(enum MenuOption option) {
 	draw_panel_text("Arrow keys to move.", 7, ALIGN_LEFT);
 	draw_panel_text("Alpha to flag.", 8, ALIGN_LEFT);
 	draw_panel_text("Mode to pause.", 9, ALIGN_LEFT);
-	draw_panel_text("Clear here to exit.", 10, ALIGN_LEFT);
 }
 
 void draw_board(struct Cell *cells, bool reveal, struct Vec2D clicked, bool partial_redraw) {
@@ -140,11 +139,11 @@ void draw_board(struct Cell *cells, bool reveal, struct Vec2D clicked, bool part
 			struct Cell *cell_ptr = &cells[y * g_width + x];
 			struct Cell cell = *cell_ptr;
 
-			if (partial_redraw && !cell.changed) {
+			if (partial_redraw && !cell.gfxupdate) {
 				continue;
 			}
 
-			cell_ptr->changed = false;
+			cell_ptr->gfxupdate = false;
 
 			struct Vec2D pixel = {
 				.x = X_PIXEL(x),

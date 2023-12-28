@@ -150,7 +150,7 @@ wait_poll_key:
 				case sk_Down:
 				case sk_Up:
 					movement_key = true;
-					cell->changed = true;
+					cell->gfxupdate = true;
 					break;
 				default:
 					movement_key = false;
@@ -255,7 +255,7 @@ wait_poll_key:
 						break;
 					}
 					if (!cell->open) {
-						cell->changed = true;
+						cell->gfxupdate = true;
 						if (cell->flag) --g_flags;
 						else			++g_flags;
 						cell->flag = !cell->flag;
@@ -293,7 +293,7 @@ wait_poll_key:
 			}
 
 			if (movement_key) {
-				cells[cursor_pos()].changed = true;
+				cells[cursor_pos()].gfxupdate = true;
 			}
 		}
 	}
